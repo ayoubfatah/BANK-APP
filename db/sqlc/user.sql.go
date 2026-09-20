@@ -13,9 +13,9 @@ import (
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-  first_name , last_name , email , phone , password_hash  , status , created_at , updated_at
+  first_name , last_name , email , phone , password_hash  , status 
 ) VALUES (
-  $1, $2, $3 ,$4 ,$5 ,$6 ,&7,&8
+  $1, $2, $3 ,$4 ,$5 ,$6 
 )
 RETURNING id, first_name, last_name, email, phone, password_hash, status, created_at, updated_at
 `
@@ -51,6 +51,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
+	return err
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
