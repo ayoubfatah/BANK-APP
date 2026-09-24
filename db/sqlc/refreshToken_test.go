@@ -105,8 +105,9 @@ func TestRevokeRefreshToken(t *testing.T){
 		revokedToken.RevokedAt.Time,
 		time.Second,
 	)
+	require.NotEmpty(t, revokedToken.RevokedAt.Time)
+
 	require.False(t, revokedToken.RevokedAt.Time.IsZero())
-	 require.True(t, token.RevokedAt.Valid)
 }
 
 

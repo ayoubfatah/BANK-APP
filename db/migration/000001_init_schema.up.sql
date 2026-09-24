@@ -115,7 +115,7 @@ CREATE TABLE "scheduled_transfers" (
 CREATE TABLE "currencies" (
   "code" varchar(3) PRIMARY KEY,
   "name" varchar NOT NULL,
-  "symbol" varchar,
+  "symbol" varchar NOT NULL ,
   "decimals" int NOT NULL DEFAULT 2,
   "is_active" boolean NOT NULL DEFAULT true,
   "created_at" timestamptz NOT NULL DEFAULT (now())

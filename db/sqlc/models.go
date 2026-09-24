@@ -126,7 +126,7 @@ type Conversion struct {
 type Currency struct {
 	Code      string             `json:"code"`
 	Name      string             `json:"name"`
-	Symbol    pgtype.Text        `json:"symbol"`
+	Symbol    string             `json:"symbol"`
 	Decimals  int32              `json:"decimals"`
 	IsActive  bool               `json:"is_active"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
