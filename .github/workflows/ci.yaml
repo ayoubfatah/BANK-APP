@@ -10,6 +10,19 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:12
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: illchangeitlater
+          POSTGRES_DB: bank-app
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -20,6 +33,14 @@ jobs:
         id: go
       - name: Build
         run: go build -v ./...
+
+      - name: installing golang migration package
+        run: |
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.20.1/migrate.darwin-amd64.tar.gz | tar xvz
+          sudo mv migrate /usr/local/bin/
+          which migrate 
+      - name: Run migrations
+        run: make migrationup
 
       - name: Test
         run: make test
