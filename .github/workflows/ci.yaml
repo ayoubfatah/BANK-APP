@@ -17,6 +17,7 @@ jobs:
           POSTGRES_USER: root
           POSTGRES_PASSWORD: illchangeitlater
           POSTGRES_DB: bank-app
+          # test
         ports:
           - 5433:5432
         options: >-
