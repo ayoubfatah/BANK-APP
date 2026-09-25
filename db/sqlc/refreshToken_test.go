@@ -18,7 +18,7 @@ func createToken(t *testing.T) (User,RefreshToken){
 		UserID: user.ID,
 		TokenHash: utils.RandomString(10),	
 		ExpiresAt: pgtype.Timestamptz{
-    	Time:  time.Now().AddDate(0, 0, 30),
+   		Time:  time.Now().AddDate(0, 0, 30).Truncate(time.Microsecond),
     	Valid: true,
 	},
 	}
