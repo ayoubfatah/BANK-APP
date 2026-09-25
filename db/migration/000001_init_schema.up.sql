@@ -1,3 +1,4 @@
+
 CREATE TABLE "users" (
   "id" bigserial PRIMARY KEY,
   "first_name" varchar NOT NULL,
@@ -115,7 +116,7 @@ CREATE TABLE "scheduled_transfers" (
 CREATE TABLE "currencies" (
   "code" varchar(3) PRIMARY KEY,
   "name" varchar NOT NULL,
-  "symbol" varchar NOT NULL ,
+  "symbol" varchar NOT NULL,
   "decimals" int NOT NULL DEFAULT 2,
   "is_active" boolean NOT NULL DEFAULT true,
   "created_at" timestamptz NOT NULL DEFAULT (now())
@@ -251,242 +252,374 @@ CREATE TABLE "payment_links" (
   "created_at" timestamptz NOT NULL DEFAULT (now())
 );
 
+
+-- ============================================================
+-- INDEXES
+-- ============================================================
+
 CREATE INDEX ON "users" ("email");
-
 CREATE INDEX ON "users" ("phone");
-
 CREATE INDEX ON "users" ("status");
 
 CREATE INDEX ON "refresh_tokens" ("user_id");
-
 CREATE INDEX ON "refresh_tokens" ("token_hash");
-
 CREATE INDEX ON "refresh_tokens" ("expires_at");
 
 CREATE INDEX ON "kyc_verifications" ("user_id");
-
 CREATE INDEX ON "kyc_verifications" ("status");
 
 CREATE INDEX ON "accounts" ("user_id");
-
 CREATE INDEX ON "accounts" ("currency");
-
 CREATE INDEX ON "accounts" ("status");
-
 CREATE UNIQUE INDEX ON "accounts" ("user_id", "currency");
 
 CREATE INDEX ON "account_details" ("account_id");
-
 CREATE UNIQUE INDEX ON "account_details" ("type", "value");
 
 CREATE INDEX ON "entries" ("account_id");
-
 CREATE INDEX ON "entries" ("type");
-
 CREATE INDEX ON "entries" ("created_at");
-
 CREATE INDEX ON "entries" ("account_id", "created_at");
 
 CREATE INDEX ON "transfers" ("from_account_id");
-
 CREATE INDEX ON "transfers" ("to_account_id");
-
 CREATE INDEX ON "transfers" ("status");
-
 CREATE INDEX ON "transfers" ("created_at");
-
 CREATE INDEX ON "transfers" ("idempotency_key");
 
 CREATE INDEX ON "fees" ("transfer_id");
-
 CREATE INDEX ON "fees" ("type");
 
 CREATE INDEX ON "beneficiaries" ("user_id");
-
 CREATE INDEX ON "beneficiaries" ("iban");
-
 CREATE INDEX ON "beneficiaries" ("account_number");
 
 CREATE INDEX ON "scheduled_transfers" ("user_id");
-
 CREATE INDEX ON "scheduled_transfers" ("from_account_id");
-
 CREATE INDEX ON "scheduled_transfers" ("beneficiary_id");
-
 CREATE INDEX ON "scheduled_transfers" ("next_run_at");
-
 CREATE INDEX ON "scheduled_transfers" ("status");
 
 CREATE INDEX ON "exchange_rates" ("base_currency", "quote_currency");
-
 CREATE INDEX ON "exchange_rates" ("fetched_at");
 
 CREATE INDEX ON "conversions" ("user_id");
-
 CREATE INDEX ON "conversions" ("from_account_id");
-
 CREATE INDEX ON "conversions" ("to_account_id");
-
 CREATE INDEX ON "conversions" ("status");
-
 CREATE INDEX ON "conversions" ("created_at");
 
 CREATE INDEX ON "incoming_payments" ("account_id");
-
 CREATE INDEX ON "incoming_payments" ("status");
-
 CREATE INDEX ON "incoming_payments" ("created_at");
 
 CREATE INDEX ON "cards" ("user_id");
-
 CREATE INDEX ON "cards" ("account_id");
-
 CREATE INDEX ON "cards" ("status");
 
 CREATE INDEX ON "card_transactions" ("card_id");
-
 CREATE INDEX ON "card_transactions" ("account_id");
-
 CREATE INDEX ON "card_transactions" ("status");
-
 CREATE INDEX ON "card_transactions" ("created_at");
 
 CREATE INDEX ON "notifications" ("user_id");
-
 CREATE INDEX ON "notifications" ("read_at");
-
 CREATE INDEX ON "notifications" ("created_at");
 
 CREATE INDEX ON "audit_logs" ("user_id");
-
 CREATE INDEX ON "audit_logs" ("entity_type");
-
 CREATE INDEX ON "audit_logs" ("entity_id");
-
 CREATE INDEX ON "audit_logs" ("created_at");
 
 CREATE INDEX ON "businesses" ("owner_id");
-
 CREATE INDEX ON "businesses" ("registration_number");
 
 CREATE UNIQUE INDEX ON "business_members" ("business_id", "user_id");
-
 CREATE INDEX ON "business_members" ("business_id");
-
 CREATE INDEX ON "business_members" ("user_id");
 
 CREATE INDEX ON "invoices" ("business_id");
-
 CREATE INDEX ON "invoices" ("status");
-
 CREATE INDEX ON "invoices" ("due_date");
 
 CREATE INDEX ON "payment_links" ("business_id");
-
 CREATE INDEX ON "payment_links" ("token");
-
 CREATE INDEX ON "payment_links" ("status");
 
-COMMENT ON COLUMN "users"."status" IS 'active, suspended, closed';
 
-COMMENT ON COLUMN "kyc_verifications"."document_type" IS 'passport, national_id, drivers_license';
+-- ============================================================
+-- COMMENTS
+-- ============================================================
 
-COMMENT ON COLUMN "kyc_verifications"."status" IS 'pending, verified, rejected';
+COMMENT ON COLUMN "users"."status"
+IS 'active, suspended, closed';
 
-COMMENT ON COLUMN "accounts"."status" IS 'active, frozen, closed';
+COMMENT ON COLUMN "kyc_verifications"."document_type"
+IS 'passport, national_id, drivers_license';
 
-COMMENT ON COLUMN "account_details"."type" IS 'iban, account_number, routing_number, sort_code';
+COMMENT ON COLUMN "kyc_verifications"."status"
+IS 'pending, verified, rejected';
 
-COMMENT ON COLUMN "entries"."type" IS 'transfer, conversion, deposit, withdrawal, card, fee, refund';
+COMMENT ON COLUMN "accounts"."status"
+IS 'active, frozen, closed';
 
-COMMENT ON COLUMN "transfers"."status" IS 'pending, processing, completed, failed, cancelled';
+COMMENT ON COLUMN "account_details"."type"
+IS 'iban, account_number, routing_number, sort_code';
 
-COMMENT ON COLUMN "fees"."type" IS 'transfer, conversion, card, withdrawal';
+COMMENT ON COLUMN "entries"."type"
+IS 'transfer, conversion, deposit, withdrawal, card, fee, refund';
 
-COMMENT ON COLUMN "scheduled_transfers"."frequency" IS 'daily, weekly, monthly, yearly';
+COMMENT ON COLUMN "transfers"."status"
+IS 'pending, processing, completed, failed, cancelled';
 
-COMMENT ON COLUMN "scheduled_transfers"."status" IS 'active, paused, cancelled';
+COMMENT ON COLUMN "fees"."type"
+IS 'transfer, conversion, card, withdrawal';
 
-COMMENT ON COLUMN "conversions"."status" IS 'pending, completed, failed';
+COMMENT ON COLUMN "scheduled_transfers"."frequency"
+IS 'daily, weekly, monthly, yearly';
 
-COMMENT ON COLUMN "incoming_payments"."status" IS 'pending, completed, failed, reversed';
+COMMENT ON COLUMN "scheduled_transfers"."status"
+IS 'active, paused, cancelled';
 
-COMMENT ON COLUMN "cards"."card_type" IS 'physical, virtual';
+COMMENT ON COLUMN "conversions"."status"
+IS 'pending, completed, failed';
 
-COMMENT ON COLUMN "cards"."status" IS 'active, frozen, cancelled, expired';
+COMMENT ON COLUMN "incoming_payments"."status"
+IS 'pending, completed, failed, reversed';
 
-COMMENT ON COLUMN "card_transactions"."status" IS 'pending, completed, reversed, declined';
+COMMENT ON COLUMN "cards"."card_type"
+IS 'physical, virtual';
 
-COMMENT ON COLUMN "businesses"."status" IS 'active, suspended, closed';
+COMMENT ON COLUMN "cards"."status"
+IS 'active, frozen, cancelled, expired';
 
-COMMENT ON COLUMN "business_members"."role" IS 'owner, admin, accountant, member';
+COMMENT ON COLUMN "card_transactions"."status"
+IS 'pending, completed, reversed, declined';
 
-COMMENT ON COLUMN "invoices"."status" IS 'draft, sent, paid, overdue, cancelled';
+COMMENT ON COLUMN "businesses"."status"
+IS 'active, suspended, closed';
 
-COMMENT ON COLUMN "payment_links"."status" IS 'active, paid, expired, cancelled';
+COMMENT ON COLUMN "business_members"."role"
+IS 'owner, admin, accountant, member';
 
-ALTER TABLE "refresh_tokens" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+COMMENT ON COLUMN "invoices"."status"
+IS 'draft, sent, paid, overdue, cancelled';
 
-ALTER TABLE "kyc_verifications" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+COMMENT ON COLUMN "payment_links"."status"
+IS 'active, paid, expired, cancelled';
 
-ALTER TABLE "accounts" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "account_details" ADD FOREIGN KEY ("account_id") REFERENCES "accounts" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+-- ============================================================
+-- FOREIGN KEYS
+-- ============================================================
 
-ALTER TABLE "entries" ADD FOREIGN KEY ("account_id") REFERENCES "accounts" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+-- USERS
+ALTER TABLE "refresh_tokens"
+ADD FOREIGN KEY ("user_id")
+REFERENCES "users" ("id")
+ON DELETE CASCADE
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "transfers" ADD FOREIGN KEY ("from_account_id") REFERENCES "accounts" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "kyc_verifications"
+ADD FOREIGN KEY ("user_id")
+REFERENCES "users" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "transfers" ADD FOREIGN KEY ("to_account_id") REFERENCES "accounts" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "accounts"
+ADD FOREIGN KEY ("user_id")
+REFERENCES "users" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "fees" ADD FOREIGN KEY ("transfer_id") REFERENCES "transfers" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "beneficiaries"
+ADD FOREIGN KEY ("user_id")
+REFERENCES "users" ("id")
+ON DELETE CASCADE
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "beneficiaries" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "scheduled_transfers"
+ADD FOREIGN KEY ("user_id")
+REFERENCES "users" ("id")
+ON DELETE CASCADE
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "scheduled_transfers" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "conversions"
+ADD FOREIGN KEY ("user_id")
+REFERENCES "users" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "scheduled_transfers" ADD FOREIGN KEY ("from_account_id") REFERENCES "accounts" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "cards"
+ADD FOREIGN KEY ("user_id")
+REFERENCES "users" ("id")
+ON DELETE CASCADE
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "scheduled_transfers" ADD FOREIGN KEY ("beneficiary_id") REFERENCES "beneficiaries" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "notifications"
+ADD FOREIGN KEY ("user_id")
+REFERENCES "users" ("id")
+ON DELETE CASCADE
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "exchange_rates" ADD FOREIGN KEY ("base_currency") REFERENCES "currencies" ("code") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "audit_logs"
+ADD FOREIGN KEY ("user_id")
+REFERENCES "users" ("id")
+ON DELETE SET NULL
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "exchange_rates" ADD FOREIGN KEY ("quote_currency") REFERENCES "currencies" ("code") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "businesses"
+ADD FOREIGN KEY ("owner_id")
+REFERENCES "users" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "conversions" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "business_members"
+ADD FOREIGN KEY ("user_id")
+REFERENCES "users" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "conversions" ADD FOREIGN KEY ("from_account_id") REFERENCES "accounts" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "conversions" ADD FOREIGN KEY ("to_account_id") REFERENCES "accounts" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+-- ACCOUNTS
+ALTER TABLE "account_details"
+ADD FOREIGN KEY ("account_id")
+REFERENCES "accounts" ("id")
+ON DELETE CASCADE
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "conversions" ADD FOREIGN KEY ("from_currency") REFERENCES "currencies" ("code") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "entries"
+ADD FOREIGN KEY ("account_id")
+REFERENCES "accounts" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "conversions" ADD FOREIGN KEY ("to_currency") REFERENCES "currencies" ("code") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "transfers"
+ADD FOREIGN KEY ("from_account_id")
+REFERENCES "accounts" ("id")
+ON DELETE SET NULL
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "incoming_payments" ADD FOREIGN KEY ("account_id") REFERENCES "accounts" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "transfers"
+ADD FOREIGN KEY ("to_account_id")
+REFERENCES "accounts" ("id")
+ON DELETE SET NULL
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "cards" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "scheduled_transfers"
+ADD FOREIGN KEY ("from_account_id")
+REFERENCES "accounts" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "cards" ADD FOREIGN KEY ("account_id") REFERENCES "accounts" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "conversions"
+ADD FOREIGN KEY ("from_account_id")
+REFERENCES "accounts" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "card_transactions" ADD FOREIGN KEY ("card_id") REFERENCES "cards" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "conversions"
+ADD FOREIGN KEY ("to_account_id")
+REFERENCES "accounts" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "card_transactions" ADD FOREIGN KEY ("account_id") REFERENCES "accounts" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "incoming_payments"
+ADD FOREIGN KEY ("account_id")
+REFERENCES "accounts" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "notifications" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "cards"
+ADD FOREIGN KEY ("account_id")
+REFERENCES "accounts" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "audit_logs" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "card_transactions"
+ADD FOREIGN KEY ("account_id")
+REFERENCES "accounts" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "businesses" ADD FOREIGN KEY ("owner_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "business_members" ADD FOREIGN KEY ("business_id") REFERENCES "businesses" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+-- TRANSFERS
+ALTER TABLE "fees"
+ADD FOREIGN KEY ("transfer_id")
+REFERENCES "transfers" ("id")
+ON DELETE CASCADE
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "business_members" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "invoices" ADD FOREIGN KEY ("business_id") REFERENCES "businesses" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+-- BENEFICIARIES
+ALTER TABLE "scheduled_transfers"
+ADD FOREIGN KEY ("beneficiary_id")
+REFERENCES "beneficiaries" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "invoices" ADD FOREIGN KEY ("currency") REFERENCES "currencies" ("code") DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "payment_links" ADD FOREIGN KEY ("business_id") REFERENCES "businesses" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+-- CURRENCIES
+ALTER TABLE "exchange_rates"
+ADD FOREIGN KEY ("base_currency")
+REFERENCES "currencies" ("code")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "payment_links" ADD FOREIGN KEY ("currency") REFERENCES "currencies" ("code") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "exchange_rates"
+ADD FOREIGN KEY ("quote_currency")
+REFERENCES "currencies" ("code")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE "conversions"
+ADD FOREIGN KEY ("from_currency")
+REFERENCES "currencies" ("code")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE "conversions"
+ADD FOREIGN KEY ("to_currency")
+REFERENCES "currencies" ("code")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE "invoices"
+ADD FOREIGN KEY ("currency")
+REFERENCES "currencies" ("code")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE "payment_links"
+ADD FOREIGN KEY ("currency")
+REFERENCES "currencies" ("code")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
+
+
+-- CARDS
+ALTER TABLE "card_transactions"
+ADD FOREIGN KEY ("card_id")
+REFERENCES "cards" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
+
+
+-- BUSINESSES
+ALTER TABLE "business_members"
+ADD FOREIGN KEY ("business_id")
+REFERENCES "businesses" ("id")
+ON DELETE CASCADE
+DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE "invoices"
+ADD FOREIGN KEY ("business_id")
+REFERENCES "businesses" ("id")
+ON DELETE RESTRICT
+DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE "payment_links"
+ADD FOREIGN KEY ("business_id")
+REFERENCES "businesses" ("id")
+ON DELETE CASCADE
+DEFERRABLE INITIALLY IMMEDIATE;

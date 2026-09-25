@@ -1,29 +1,36 @@
--- name : CreateAccountDetail :one
+-- name: CreateAccountDetail :one
 INSERT INTO account_details(account_id , type, value , country , bank_name) 
-VALUES ($1,$2,$3,$5)
+VALUES ($1,$2,$3,$4 ,$5)
 RETURNING * ;
 
--- name : GetAccountDetailByAccountId :one 
+-- name: GetAccountDetailByAccountId :one 
 SELECT * FROM  account_details
 WHERE account_id = $1
 LIMIT 1;
 
--- name : GetAccountDetailById :one 
+-- name: GetAccountDetailById :one 
 SELECT * FROM  account_details
 WHERE id = $1
 LIMIT 1 ;
 
 
--- name : ListAccountDetails :many
+-- name: ListAccountDetails :many
 SELECT * FROM  account_details
 LIMIT $1
-OFFSET $2
+OFFSET $2;
 
--- name : UpdateAccountDetail :exec 
-UPDATE account_details 
-SET type = $2, value = $3 , country = $4 , bank_name = $5
-WHERE id = $1
+-- name: UpdateAccountDetail :exec
+UPDATE account_details
+SET
+    account_id = $2,
+    type = $3,
+    value = $4,
+    country = $5,
+    bank_name = $6
+WHERE id = $1;
 
--- name : DeleteAccountDetail : exec
-DELETE account_details 
-WHERE id = $1 
+
+
+-- name: DeleteAccountDetail :exec
+DELETE  FROM account_details 
+WHERE id = $1 ;

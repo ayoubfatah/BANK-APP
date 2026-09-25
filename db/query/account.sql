@@ -19,11 +19,12 @@ SELECT * FROM accounts
 WHERE user_id = $1;
 
 
--- name: UpdateAccountStatus :exec 
+-- name: UpdateAccountStatus :one 
 UPDATE accounts 
 SET status = $1 ,
     updated_at = now()
-WHERE user_id =$2;
+WHERE id =$2
+RETURNING * ;
 
 
 

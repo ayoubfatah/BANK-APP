@@ -120,19 +120,30 @@ func (q *Queries) ListAccountsByUserID(ctx context.Context, userID int64) ([]Acc
 	return items, nil
 }
 
-const updateAccountStatus = `-- name: UpdateAccountStatus :exec
+const updateAccountStatus = `-- name: UpdateAccountStatus :one
 UPDATE accounts 
 SET status = $1 ,
     updated_at = now()
-WHERE user_id =$2
+WHERE id =$2
+RETURNING id, user_id, currency, balance, status, created_at, updated_at
 `
 
 type UpdateAccountStatusParams struct {
 	Status string `json:"status"`
-	UserID int64  `json:"user_id"`
+	ID     int64  `json:"id"`
 }
 
-func (q *Queries) UpdateAccountStatus(ctx context.Context, arg UpdateAccountStatusParams) error {
-	_, err := q.db.Exec(ctx, updateAccountStatus, arg.Status, arg.UserID)
-	return err
+func (q *Queries) UpdateAccountStatus(ctx context.Context, arg UpdateAccountStatusParams) (Account, error) {
+	row := q.db.QueryRow(ctx, updateAccountStatus, arg.Status, arg.ID)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Currency,
+		&i.Balance,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
