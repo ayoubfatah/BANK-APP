@@ -17,6 +17,8 @@ jobs:
           POSTGRES_USER: root
           POSTGRES_PASSWORD: illchangeitlater
           POSTGRES_DB: bank-app
+        ports:
+          - 5433:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
