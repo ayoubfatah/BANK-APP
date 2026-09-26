@@ -14,19 +14,22 @@ const (
 )
 
 var testQueries *Queries
+var testDb *pgxpool.Pool
 
 func TestMain(m *testing.M) {
-	conn, err := pgxpool.New(context.Background(), dbSource)
+	var err error 
+	
+	testDb, err = pgxpool.New(context.Background(), dbSource)
 	if err != nil {
 		log.Fatal("cannot connect to database:", err)
 	}
 
-	err = conn.Ping(context.Background())
+	err = testDb.Ping(context.Background())
 	if err != nil {
 		log.Fatal("cannot ping database:", err)
 	}
 
-	testQueries = New(conn)
+	testQueries = New(testDb)
 
 	os.Exit(m.Run())
 }
