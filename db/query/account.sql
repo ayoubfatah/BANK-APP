@@ -6,7 +6,9 @@ RETURNING * ;
 
 -- name: GetAccount :one 
 SELECT * FROM accounts 
-WHERE id = $1 ;
+WHERE id = $1
+FOR NO KEY UPDATE 
+ ;
 
 -- name: GetAccountByUserAndCurrency :one 
 SELECT * FROM accounts 
@@ -26,6 +28,25 @@ SET status = $1 ,
 WHERE id =$2
 RETURNING * ;
 
+-- name: UpdateAccountBalance :one
+UPDATE accounts
+SET balance = $1,
+    updated_at = now()
+WHERE id = $2
+RETURNING *;
 
+-- name: AddToAccountBalance :one
 
+UPDATE accounts
+SET balance = balance + $1,
+    updated_at = now()
+WHERE id = $2
+RETURNING *;
 
+-- name: SubtractFromAccountBalance :one
+
+UPDATE accounts
+SET balance = balance - $1,
+    updated_at = now()
+WHERE id = $2
+RETURNING *;
