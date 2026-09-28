@@ -44,3 +44,10 @@ func (store *Store) execTx(
 	return tx.Commit(ctx)
 }
 
+
+
+
+
+func StartCardTransaction(){
+	
+}

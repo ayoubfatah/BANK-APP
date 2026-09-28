@@ -47,3 +47,6 @@ SET
     is_active = false
 WHERE code = $1
 RETURNING *;
+
+-- name: DeleteAllCurrencies :exec
+DELETE FROM currencies;

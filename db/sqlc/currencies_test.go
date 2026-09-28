@@ -8,6 +8,8 @@ import (
 )
 
 func createCurr(t *testing.T, code, name, symbol string) Currency {
+	err := testQueries.DeleteAllCurrencies(context.Background())
+	require.NoError(t, err)
 	arg := CreateCurrencyParams{
 		Code:     code,
 		Name:     name,

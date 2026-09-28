@@ -178,12 +178,13 @@ type IncomingPayment struct {
 }
 
 type Invoice struct {
-	ID            int64       `json:"id"`
-	BusinessID    int64       `json:"business_id"`
-	CustomerName  string      `json:"customer_name"`
-	CustomerEmail pgtype.Text `json:"customer_email"`
-	Amount        int64       `json:"amount"`
-	Currency      string      `json:"currency"`
+	ID             int64       `json:"id"`
+	BusinessID     int64       `json:"business_id"`
+	CustomerUserID pgtype.Int8 `json:"customer_user_id"`
+	CustomerName   string      `json:"customer_name"`
+	CustomerEmail  pgtype.Text `json:"customer_email"`
+	Amount         int64       `json:"amount"`
+	Currency       string      `json:"currency"`
 	// draft, sent, paid, overdue, cancelled
 	Status    string             `json:"status"`
 	DueDate   pgtype.Date        `json:"due_date"`

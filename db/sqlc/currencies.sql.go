@@ -77,6 +77,15 @@ func (q *Queries) DeactivateCurrency(ctx context.Context, code string) (Currency
 	return i, err
 }
 
+const deleteAllCurrencies = `-- name: DeleteAllCurrencies :exec
+DELETE FROM currencies
+`
+
+func (q *Queries) DeleteAllCurrencies(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deleteAllCurrencies)
+	return err
+}
+
 const getCurrency = `-- name: GetCurrency :one
 SELECT code, name, symbol, decimals, is_active, created_at
 FROM currencies
