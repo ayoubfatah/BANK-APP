@@ -12,27 +12,6 @@ import (
 )
 
 
-func createCurr(t *testing.T, code, name, symbol string) db.Currency {
-	err := testStore.DeleteAllCurrencies(context.Background())
-	require.NoError(t, err)
-	arg := db.CreateCurrencyParams{
-		Code:     code,
-		Name:     name,
-		Symbol:   symbol,
-		Decimals: 2,
-		IsActive: true,
-	}
-
-	currency, err := testStore.CreateCurrency(
-		context.Background(),
-		arg,
-	)
-
-	require.NoError(t, err)
-	require.NotEmpty(t, currency)
-
-	return currency
-}
 
 
 func createNewBusiness(t *testing.T) db.Business {
@@ -114,8 +93,6 @@ func createInvoiceUtil(t *testing.T) db.Invoice {
 }
 
 func TestMarkInvoiceAsPaidTransaction(t *testing.T) {
-	createCurr(t, "USD", "US Dollar", "$")
-
 	fromUser := createNewUser(t)
 	toUser := createNewUser(t)
 
