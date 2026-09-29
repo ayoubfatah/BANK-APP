@@ -55,28 +55,6 @@ func (q *Queries) CreateCurrency(ctx context.Context, arg CreateCurrencyParams) 
 	return i, err
 }
 
-const deactivateCurrency = `-- name: DeactivateCurrency :one
-UPDATE currencies
-SET
-    is_active = false
-WHERE code = $1
-RETURNING code, name, symbol, decimals, is_active, created_at
-`
-
-func (q *Queries) DeactivateCurrency(ctx context.Context, code string) (Currency, error) {
-	row := q.db.QueryRow(ctx, deactivateCurrency, code)
-	var i Currency
-	err := row.Scan(
-		&i.Code,
-		&i.Name,
-		&i.Symbol,
-		&i.Decimals,
-		&i.IsActive,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const deleteAllCurrencies = `-- name: DeleteAllCurrencies :exec
 DELETE FROM currencies
 `
@@ -171,6 +149,33 @@ func (q *Queries) UpdateCurrency(ctx context.Context, arg UpdateCurrencyParams) 
 		arg.Symbol,
 		arg.Decimals,
 	)
+	var i Currency
+	err := row.Scan(
+		&i.Code,
+		&i.Name,
+		&i.Symbol,
+		&i.Decimals,
+		&i.IsActive,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateCurrencyActiveState = `-- name: UpdateCurrencyActiveState :one
+UPDATE currencies
+SET
+    is_active= $2
+WHERE code = $1
+RETURNING code, name, symbol, decimals, is_active, created_at
+`
+
+type UpdateCurrencyActiveStateParams struct {
+	Code     string `json:"code"`
+	IsActive bool   `json:"is_active"`
+}
+
+func (q *Queries) UpdateCurrencyActiveState(ctx context.Context, arg UpdateCurrencyActiveStateParams) (Currency, error) {
+	row := q.db.QueryRow(ctx, updateCurrencyActiveState, arg.Code, arg.IsActive)
 	var i Currency
 	err := row.Scan(
 		&i.Code,

@@ -41,12 +41,15 @@ WHERE code = $1
 RETURNING *;
 
 
--- name: DeactivateCurrency :one
-UPDATE currencies
-SET
-    is_active = false
-WHERE code = $1
-RETURNING *;
 
 -- name: DeleteAllCurrencies :exec
 DELETE FROM currencies;
+
+
+
+-- name: UpdateCurrencyActiveState :one
+UPDATE currencies
+SET
+    is_active= $2
+WHERE code = $1
+RETURNING *;

@@ -29,6 +29,7 @@ func TestMain(m *testing.M) {
 		log.Fatal("cannot ping database:", err)
 	}
 
+
 	testQueries = New(testDb)
 
 	os.Exit(m.Run())

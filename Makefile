@@ -17,6 +17,7 @@ migrationdown:
 
 
 resetdb:
+	docker exec postgres12 psql -U root -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'bank-app' AND pid <> pg_backend_pid();"
 	docker exec postgres12 dropdb --if-exists --username=root bank-app
 	docker exec postgres12 createdb --username=root --owner=root bank-app
 	migrate -path db/migration -database "$(DB_URL)" -verbose up

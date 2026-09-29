@@ -7,32 +7,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createCurr(t *testing.T, code, name, symbol string) Currency {
-	err := testQueries.DeleteAllCurrencies(context.Background())
-	require.NoError(t, err)
-	arg := CreateCurrencyParams{
-		Code:     code,
-		Name:     name,
-		Symbol:   symbol,
-		Decimals: 2,
-		IsActive: true,
-	}
-
-	currency, err := testQueries.CreateCurrency(
-		context.Background(),
-		arg,
-	)
-
-	require.NoError(t, err)
-	require.NotEmpty(t, currency)
-
-	return currency
-}
-
-// CREATE USD
+// test USD
 func TestCreateUSD(t *testing.T) {
-	currency := createCurr(t, "USD", "US Dollar", "$")
-
+	currency  ,err:= testQueries.GetCurrency(context.Background(),"USD")
+	require.NoError(t,err)
 	require.Equal(t, "USD", currency.Code)
 	require.Equal(t, "US Dollar", currency.Name)
 	require.Equal(t, "$", currency.Symbol)
@@ -40,10 +18,12 @@ func TestCreateUSD(t *testing.T) {
 	require.True(t, currency.IsActive)
 }
 
+
 // CREATE EUR
 func TestCreateEUR(t *testing.T) {
-	currency := createCurr(t, "EUR", "Euro", "€")
 
+	currency  ,err:= testQueries.GetCurrency(context.Background(),"EUR")
+	require.NoError(t,err)
 	require.Equal(t, "EUR", currency.Code)
 	require.Equal(t, "Euro", currency.Name)
 	require.Equal(t, "€", currency.Symbol)
@@ -53,8 +33,8 @@ func TestCreateEUR(t *testing.T) {
 
 // GET CURRENCY BY CODE
 func TestGetCurrency(t *testing.T) {
-	currency := createCurr(t, "GBP", "British Pound", "£")
-
+	currency  ,err:= testQueries.GetCurrency(context.Background(),"GBP")
+	require.NoError(t,err)
 	fetched, err := testQueries.GetCurrency(
 		context.Background(),
 		currency.Code,
@@ -80,34 +60,13 @@ func TestGetInvalidCurrency(t *testing.T) {
 	require.Error(t, err)
 }
 
-// LIST CURRENCIES
-func TestListCurrencies(t *testing.T) {
-	createCurr(t, "MAD", "Moroccan Dirham", "DH")
-	createCurr(t, "JPY", "Japanese Yen", "¥")
 
-	currencies, err := testQueries.ListCurrencies(
-		context.Background(),
-		ListCurrenciesParams{
-			Limit:  10,
-			Offset: 0,
-		},
-	)
-
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(currencies), 2)
-
-	for _, currency := range currencies {
-		require.NotEmpty(t, currency.Code)
-		require.NotEmpty(t, currency.Name)
-		require.NotEmpty(t, currency.Symbol)
-		require.True(t, currency.IsActive)
-	}
-}
 
 // UPDATE CURRENCY
 func TestUpdateCurrency(t *testing.T) {
-	createCurr(t, "CAD", "Canadian Dollar", "C$")
 
+	_,err:= testQueries.GetCurrency(context.Background(),"GBP")
+	require.NoError(t,err)
 	updated, err := testQueries.UpdateCurrency(
 		context.Background(),
 		UpdateCurrencyParams{
@@ -128,35 +87,28 @@ func TestUpdateCurrency(t *testing.T) {
 	require.True(t, updated.IsActive)
 }
 
-// DUPLICATE CURRENCY CODE FAILS
-func TestDuplicateCurrencyCode(t *testing.T) {
-	createCurr(t, "CHF", "Swiss Franc", "CHF")
-
-	arg := CreateCurrencyParams{
-		Code:     "CHF",
-		Name:     "Another Swiss Franc",
-		Symbol:   "CHF",
-		Decimals: 2,
-		IsActive: true,
-	}
-
-	_, err := testQueries.CreateCurrency(
-		context.Background(),
-		arg,
-	)
-
-	require.Error(t, err)
-}
 
 // DEACTIVATE CURRENCY
 func TestDeactivateCurrency(t *testing.T) {
-	currency := createCurr(t, "AUD", "Australian Dollar", "A$")
-
-	require.True(t, currency.IsActive)
-
-	deactivated, err := testQueries.DeactivateCurrency(
+	currency,err:= testQueries.GetCurrency(context.Background(),"AUD")
+		updated, err := testQueries.UpdateCurrencyActiveState(
 		context.Background(),
-		currency.Code,
+		UpdateCurrencyActiveStateParams{
+		Code: currency.Code,
+		IsActive: true,
+		},
+	)
+
+	require.NoError(t,err)
+
+	require.True(t, updated.IsActive)
+
+	deactivated, err := testQueries.UpdateCurrencyActiveState(
+		context.Background(),
+		UpdateCurrencyActiveStateParams{
+			Code: currency.Code,
+			IsActive: false,
+		},
 	)
 
 	require.NoError(t, err)

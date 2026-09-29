@@ -188,134 +188,132 @@ func TestMarkInvoiceAsPaidTransaction(t *testing.T) {
 	require.True(t, updatedInvoice.PaidAt.Valid)
 }
 
-// func TestMarkInvoiceAsPaidTransactionInsufficientFunds(t *testing.T) {
-// 	createCurr(t, "USD", "US Dollar", "$")
+func TestMarkInvoiceAsPaidTransactionInsufficientFunds(t *testing.T) {
+	fromUser := createNewUser(t)
+	toUser := createNewUser(t)
+	fromAccount, err := testStore.CreateAccount(
+		context.Background(),
+		db.CreateAccountParams{
+			UserID:   fromUser.ID,
+			Currency: "USD",
+			Balance:  10000,
+			Status:   "active",
+		},
+	)
+	require.NoError(t, err)
 
-// 	fromUser := createNewUser(t)
-// 	toUser := createNewUser(t)
+	toAccount, err := testStore.CreateAccount(
+		context.Background(),
+		db.CreateAccountParams{
+			UserID:   toUser.ID,
+			Currency: "USD",
+			Balance:  50000,
+			Status:   "active",
+		},
+	)
+	require.NoError(t, err)
 
-// 	fromAccount, err := testStore.CreateAccount(
-// 		context.Background(),
-// 		db.CreateAccountParams{
-// 			UserID:   fromUser.ID,
-// 			Currency: "USD",
-// 			Balance:  10000,
-// 			Status:   "active",
-// 		},
-// 	)
-// 	require.NoError(t, err)
+	invoice := createInvoiceUtil(t)
 
-// 	toAccount, err := testStore.CreateAccount(
-// 		context.Background(),
-// 		db.CreateAccountParams{
-// 			UserID:   toUser.ID,
-// 			Currency: "USD",
-// 			Balance:  50000,
-// 			Status:   "active",
-// 		},
-// 	)
-// 	require.NoError(t, err)
+	invoice, err = testStore.IssueInvoice(
+		context.Background(),
+		invoice.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, "pending", invoice.Status)
 
-// 	invoice := createInvoiceUtil(t)
+	err = testStore.MarkInvoiceAsPaidTransaction(
+		context.Background(),
+		MarkInvoiceAsPaidTransactionParams{
+			InvoiceID:     invoice.ID,
+			FromAccountID: fromAccount.ID,
+			ToAccountID:   toAccount.ID,
+			Currency:      "USD",
+			Amount:        20000,
+			Description:   "Invoice payment",
+		},
+	)
 
-// 	invoice, err = testStore.IssueInvoice(
-// 		context.Background(),
-// 		invoice.ID,
-// 	)
-// 	require.NoError(t, err)
-// 	require.Equal(t, "pending", invoice.Status)
+	require.Error(t, err)
+	require.EqualError(t, err, "insufficient funds")
 
-// 	err = testStore.MarkInvoiceAsPaidTransaction(
-// 		context.Background(),
-// 		MarkInvoiceAsPaidTransactionParams{
-// 			InvoiceID:     invoice.ID,
-// 			FromAccountID: fromAccount.ID,
-// 			ToAccountID:   toAccount.ID,
-// 			Currency:      "USD",
-// 			Amount:        20000,
-// 			Description:   "Invoice payment",
-// 		},
-// 	)
+	fromAccount, err = testStore.GetAccount(
+		context.Background(),
+		fromAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(10000), fromAccount.Balance)
 
-// 	require.Error(t, err)
-// 	require.EqualError(t, err, "insufficient funds")
+	toAccount, err = testStore.GetAccount(
+		context.Background(),
+		toAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(50000), toAccount.Balance)
 
-// 	fromAccount, err = testStore.GetAccount(
-// 		context.Background(),
-// 		fromAccount.ID,
-// 	)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(10000), fromAccount.Balance)
+	updatedInvoice, err := testStore.GetInvoiceById(
+		context.Background(),
+		invoice.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, "pending", updatedInvoice.Status)
+	require.False(t, updatedInvoice.PaidAt.Valid)
+}
 
-// 	toAccount, err = testStore.GetAccount(
-// 		context.Background(),
-// 		toAccount.ID,
-// 	)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(50000), toAccount.Balance)
 
-// 	updatedInvoice, err := testStore.GetInvoiceById(
-// 		context.Background(),
-// 		invoice.ID,
-// 	)
-// 	require.NoError(t, err)
-// 	require.Equal(t, "pending", updatedInvoice.Status)
-// 	require.False(t, updatedInvoice.PaidAt.Valid)
-// }
+func TestMarkInvoiceAsPaidTransactionInvalidInvoice(t *testing.T) {
 
-// func TestMarkInvoiceAsPaidTransactionInvalidInvoice(t *testing.T) {
-// 	createCurr(t, "USD", "US Dollar", "$")
 
-// 	fromUser := createNewUser(t)
-// 	toUser := createNewUser(t)
+	fromUser := createNewUser(t)
+	toUser := createNewUser(t)
 
-// 	fromAccount, err := testStore.CreateAccount(
-// 		context.Background(),
-// 		db.CreateAccountParams{
-// 			UserID:   fromUser.ID,
-// 			Currency: "USD",
-// 			Balance:  100000,
-// 			Status:   "active",
-// 		},
-// 	)
-// 	require.NoError(t, err)
+	fromAccount, err := testStore.CreateAccount(
+		context.Background(),
+		db.CreateAccountParams{
+			UserID:   fromUser.ID,
+			Currency: "USD",
+			Balance:  100000,
+			Status:   "active",
+		},
+	)
+	require.NoError(t, err)
 
-// 	toAccount, err := testStore.CreateAccount(
-// 		context.Background(),
-// 		db.CreateAccountParams{
-// 			UserID:   toUser.ID,
-// 			Currency: "USD",
-// 			Balance:  50000,
-// 			Status:   "active",
-// 		},
-// 	)
-// 	require.NoError(t, err)
+	toAccount, err := testStore.CreateAccount(
+		context.Background(),
+		db.CreateAccountParams{
+			UserID:   toUser.ID,
+			Currency: "USD",
+			Balance:  50000,
+			Status:   "active",
+		},
+	)
+	require.NoError(t, err)
 
-// 	err = testStore.MarkInvoiceAsPaidTransaction(
-// 		context.Background(),
-// 		MarkInvoiceAsPaidTransactionParams{
-// 			InvoiceID:     999999,
-// 			FromAccountID: fromAccount.ID,
-// 			ToAccountID:   toAccount.ID,
-// 			Currency:      "USD",
-// 			Amount:        20000,
-// 			Description:   "Invoice payment",
-// 		},
-// 	)
+	err = testStore.MarkInvoiceAsPaidTransaction(
+		context.Background(),
+		MarkInvoiceAsPaidTransactionParams{
+			InvoiceID:     999999,
+			FromAccountID: fromAccount.ID,
+			ToAccountID:   toAccount.ID,
+			Currency:      "USD",
+			Amount:        20000,
+			Description:   "Invoice payment",
+		},
+	)
 
-// 	require.Error(t, err)
+	require.Error(t, err)
 
-// 	fromAccount, err = testStore.GetAccount(
-// 		context.Background(),
-// 		fromAccount.ID,
-// 	)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(100000), fromAccount.Balance)
+	fromAccount, err = testStore.GetAccount(
+		context.Background(),
+		fromAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(100000), fromAccount.Balance)
 
-// 	toAccount, err = testStore.GetAccount(
-// 		context.Background(),
-// 		toAccount.ID,
-// 	)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(50000), toAccount.Balance)
-// }
+	toAccount, err = testStore.GetAccount(
+		context.Background(),
+		toAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(50000), toAccount.Balance)
+}
