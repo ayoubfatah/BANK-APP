@@ -128,22 +128,24 @@ func (q *Queries) ListIncomingPaymentsByAccountID(ctx context.Context, accountID
 const updateIncomingPaymentStatus = `-- name: UpdateIncomingPaymentStatus :one
 UPDATE incoming_payments
 SET
-    status = $2,
+    status = $2::varchar,
     completed_at = CASE
-        WHEN $2::varchar = 'completed' THEN now()
+        WHEN $2::varchar = 'completed'
+        THEN now()
         ELSE completed_at
     END
 WHERE id = $1
+  AND status = 'pending'
 RETURNING id, account_id, sender_name, sender_reference, amount, currency, status, external_reference, created_at, completed_at
 `
 
 type UpdateIncomingPaymentStatusParams struct {
-	ID     int64  `json:"id"`
-	Status string `json:"status"`
+	ID      int64  `json:"id"`
+	Column2 string `json:"column_2"`
 }
 
 func (q *Queries) UpdateIncomingPaymentStatus(ctx context.Context, arg UpdateIncomingPaymentStatusParams) (IncomingPayment, error) {
-	row := q.db.QueryRow(ctx, updateIncomingPaymentStatus, arg.ID, arg.Status)
+	row := q.db.QueryRow(ctx, updateIncomingPaymentStatus, arg.ID, arg.Column2)
 	var i IncomingPayment
 	err := row.Scan(
 		&i.ID,

@@ -156,5 +156,5 @@ INSERT INTO currencies (code, name, symbol, decimals, is_active) VALUES
   ('ZWG', 'Zimbabwe Gold', 'ZiG', 2, false)
 ON CONFLICT (code) DO NOTHING;
 
--- What the bank actually offers. Add a code here (or run an UPDATE later) to offer more.
+
 UPDATE currencies SET is_active = true WHERE code IN ('USD', 'EUR', 'GBP', 'MAD', 'JPY', 'CAD' );

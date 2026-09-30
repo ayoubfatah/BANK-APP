@@ -32,3 +32,8 @@ SELECT *
 FROM fees
 WHERE transfer_id = $1
 ORDER BY created_at DESC;
+
+-- name: GetTransferFeesTotal :one
+SELECT COALESCE(SUM(amount), 0)::bigint AS total_fees
+FROM fees
+WHERE transfer_id = $1;

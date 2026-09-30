@@ -27,7 +27,8 @@ sqlc:
 
 test:
 	go test -v ./...
-
+test-nocache:
+	go test -count=1 ./...
 # Reset the database, then run all tests
 testfresh: resetdb test
 
@@ -37,4 +38,4 @@ clean:
 	docker rm postgres12 || true
 	docker volume rm bank-app-postgres-data || true
 
-.PHONY: postgres createdb dropdb migrationup migrationdown resetdb sqlc test testfresh clean
+.PHONY: postgres createdb dropdb migrationup migrationdown resetdb sqlc test testfresh test-nocache clean 

@@ -30,10 +30,12 @@ ORDER BY created_at DESC;
 -- name: UpdateIncomingPaymentStatus :one
 UPDATE incoming_payments
 SET
-    status = $2,
+    status = $2::varchar,
     completed_at = CASE
-        WHEN $2::varchar = 'completed' THEN now()
+        WHEN $2::varchar = 'completed'
+        THEN now()
         ELSE completed_at
     END
 WHERE id = $1
+  AND status = 'pending'
 RETURNING *;

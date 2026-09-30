@@ -107,6 +107,19 @@ func (q *Queries) GetTransferFees(ctx context.Context, transferID pgtype.Int8) (
 	return items, nil
 }
 
+const getTransferFeesTotal = `-- name: GetTransferFeesTotal :one
+SELECT COALESCE(SUM(amount), 0)::bigint AS total_fees
+FROM fees
+WHERE transfer_id = $1
+`
+
+func (q *Queries) GetTransferFeesTotal(ctx context.Context, transferID pgtype.Int8) (int64, error) {
+	row := q.db.QueryRow(ctx, getTransferFeesTotal, transferID)
+	var total_fees int64
+	err := row.Scan(&total_fees)
+	return total_fees, err
+}
+
 const listFeesByTransferID = `-- name: ListFeesByTransferID :many
 SELECT id, transfer_id, type, amount, currency, created_at
 FROM fees
