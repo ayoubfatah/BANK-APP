@@ -31,10 +31,7 @@ func createExRate(
 			String: source,
 			Valid:  true,
 		},
-		FetchedAt: pgtype.Timestamptz{
-			Time:  fetchedAt,
-			Valid: true,
-		},
+	
 	}
 
 	// Parse the decimal string into pgtype.Numeric.
@@ -104,10 +101,7 @@ func TestGetExchangeRate(t *testing.T) {
 		GetExchangeRateParams{
 			BaseCurrency:  "USD",
 			QuoteCurrency: "EUR",
-			FetchedAt: pgtype.Timestamptz{
-				Time:  createdRate.FetchedAt.Time,
-				Valid: true,
-			},
+			
 		},
 	)
 
@@ -143,9 +137,9 @@ func TestGetLatestExchangeRate(t *testing.T) {
 		now,
 	)
 
-	rate, err := testQueries.GetLatestExchangeRate(
+	rate, err := testQueries.GetExchangeRate(
 		context.Background(),
-		GetLatestExchangeRateParams{
+		GetExchangeRateParams{
 			BaseCurrency:  "USD",
 			QuoteCurrency: "EUR",
 		},
@@ -191,9 +185,9 @@ func TestGetLatestExchangeRateDifferentCurrencyPair(t *testing.T) {
 		now,
 	)
 
-	rate, err := testQueries.GetLatestExchangeRate(
+	rate, err := testQueries.GetExchangeRate(
 		context.Background(),
-		GetLatestExchangeRateParams{
+		GetExchangeRateParams{
 			BaseCurrency:  "GBP",
 			QuoteCurrency: "EUR",
 		},
@@ -245,9 +239,9 @@ func TestGetLatestExchangeRateMultipleRates(t *testing.T) {
 		now,
 	)
 
-	rate, err := testQueries.GetLatestExchangeRate(
+	rate, err := testQueries.GetExchangeRate(
 		context.Background(),
-		GetLatestExchangeRateParams{
+		GetExchangeRateParams{
 			BaseCurrency:  "USD",
 			QuoteCurrency: "EUR",
 		},
@@ -260,9 +254,9 @@ func TestGetLatestExchangeRateMultipleRates(t *testing.T) {
 }
 
 func TestGetLatestExchangeRateInvalidCurrency(t *testing.T) {
-	rate, err := testQueries.GetLatestExchangeRate(
+	rate, err := testQueries.GetExchangeRate(
 		context.Background(),
-		GetLatestExchangeRateParams{
+		GetExchangeRateParams{
 			BaseCurrency:  "XXX",
 			QuoteCurrency: "EUR",
 		},

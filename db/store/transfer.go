@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	db "github.com/bank-app/db/sqlc"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -43,6 +44,16 @@ type CreateTransferTransactionArgs struct {
 func (store  *Store )CreateTransferTransaction(ctx context.Context , args CreateTransferTransactionArgs) error{
 	// lets lock accounts first in a consistent order
     err := store.execTx(ctx , func(q *db.Queries) error {
+
+	if args.IdempotencyKey.Valid {
+    _, err := q.GetTransferByIdempotencyKey(ctx, args.IdempotencyKey)
+    if err == nil {
+        return nil
+    }
+    if !errors.Is(err, pgx.ErrNoRows) {
+        return err
+    }
+}
 
 	if ( args.FromAccountID == args.ToAccountID){
 	return ErrSameAccount
