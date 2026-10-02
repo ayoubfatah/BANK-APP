@@ -19,7 +19,7 @@ func TestCreateConversionTransaction_AyoubConvertsUSDToEUR(t *testing.T) {
 
 	usdAccount := createTestAccount(t, store, user.ID, "USD", 100000) // $1,000.00
 	eurAccount := createTestAccount(t, store, user.ID, "EUR", 0)
-
+ 
 
 	fromAmount := int64(10000) // $100.00
 	fee := int64(50)           // $0.50

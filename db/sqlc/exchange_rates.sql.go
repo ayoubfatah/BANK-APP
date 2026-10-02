@@ -16,20 +16,18 @@ INSERT INTO exchange_rates (
     base_currency,
     quote_currency,
     rate,
-    source,
-    fetched_at
+    source
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4
 )
 RETURNING id, base_currency, quote_currency, rate, source, fetched_at
 `
 
 type CreateExchangeRateParams struct {
-	BaseCurrency  string             `json:"base_currency"`
-	QuoteCurrency string             `json:"quote_currency"`
-	Rate          pgtype.Numeric     `json:"rate"`
-	Source        pgtype.Text        `json:"source"`
-	FetchedAt     pgtype.Timestamptz `json:"fetched_at"`
+	BaseCurrency  string         `json:"base_currency"`
+	QuoteCurrency string         `json:"quote_currency"`
+	Rate          pgtype.Numeric `json:"rate"`
+	Source        pgtype.Text    `json:"source"`
 }
 
 func (q *Queries) CreateExchangeRate(ctx context.Context, arg CreateExchangeRateParams) (ExchangeRate, error) {
@@ -38,7 +36,6 @@ func (q *Queries) CreateExchangeRate(ctx context.Context, arg CreateExchangeRate
 		arg.QuoteCurrency,
 		arg.Rate,
 		arg.Source,
-		arg.FetchedAt,
 	)
 	var i ExchangeRate
 	err := row.Scan(
@@ -57,46 +54,16 @@ SELECT id, base_currency, quote_currency, rate, source, fetched_at
 FROM exchange_rates
 WHERE base_currency = $1
   AND quote_currency = $2
-  AND fetched_at = $3
 LIMIT 1
 `
 
 type GetExchangeRateParams struct {
-	BaseCurrency  string             `json:"base_currency"`
-	QuoteCurrency string             `json:"quote_currency"`
-	FetchedAt     pgtype.Timestamptz `json:"fetched_at"`
-}
-
-func (q *Queries) GetExchangeRate(ctx context.Context, arg GetExchangeRateParams) (ExchangeRate, error) {
-	row := q.db.QueryRow(ctx, getExchangeRate, arg.BaseCurrency, arg.QuoteCurrency, arg.FetchedAt)
-	var i ExchangeRate
-	err := row.Scan(
-		&i.ID,
-		&i.BaseCurrency,
-		&i.QuoteCurrency,
-		&i.Rate,
-		&i.Source,
-		&i.FetchedAt,
-	)
-	return i, err
-}
-
-const getLatestExchangeRate = `-- name: GetLatestExchangeRate :one
-SELECT id, base_currency, quote_currency, rate, source, fetched_at
-FROM exchange_rates
-WHERE base_currency = $1
-  AND quote_currency = $2
-ORDER BY fetched_at DESC
-LIMIT 1
-`
-
-type GetLatestExchangeRateParams struct {
 	BaseCurrency  string `json:"base_currency"`
 	QuoteCurrency string `json:"quote_currency"`
 }
 
-func (q *Queries) GetLatestExchangeRate(ctx context.Context, arg GetLatestExchangeRateParams) (ExchangeRate, error) {
-	row := q.db.QueryRow(ctx, getLatestExchangeRate, arg.BaseCurrency, arg.QuoteCurrency)
+func (q *Queries) GetExchangeRate(ctx context.Context, arg GetExchangeRateParams) (ExchangeRate, error) {
+	row := q.db.QueryRow(ctx, getExchangeRate, arg.BaseCurrency, arg.QuoteCurrency)
 	var i ExchangeRate
 	err := row.Scan(
 		&i.ID,
@@ -114,7 +81,7 @@ SELECT id, base_currency, quote_currency, rate, source, fetched_at
 FROM exchange_rates
 WHERE base_currency = $1
   AND quote_currency = $2
-ORDER BY fetched_at DESC
+ORDER BY id DESC
 LIMIT $3
 OFFSET $4
 `
