@@ -47,7 +47,3 @@ func (store *Store) execTx(
 
 
 
-
-func StartCardTransaction(){
-	
-}

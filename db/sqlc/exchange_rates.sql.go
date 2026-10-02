@@ -20,7 +20,7 @@ INSERT INTO exchange_rates (
 ) VALUES (
     $1, $2, $3, $4
 )
-RETURNING id, base_currency, quote_currency, rate, source, fetched_at
+RETURNING id, base_currency, quote_currency, rate, source
 `
 
 type CreateExchangeRateParams struct {
@@ -44,13 +44,12 @@ func (q *Queries) CreateExchangeRate(ctx context.Context, arg CreateExchangeRate
 		&i.QuoteCurrency,
 		&i.Rate,
 		&i.Source,
-		&i.FetchedAt,
 	)
 	return i, err
 }
 
 const getExchangeRate = `-- name: GetExchangeRate :one
-SELECT id, base_currency, quote_currency, rate, source, fetched_at
+SELECT id, base_currency, quote_currency, rate, source
 FROM exchange_rates
 WHERE base_currency = $1
   AND quote_currency = $2
@@ -71,13 +70,12 @@ func (q *Queries) GetExchangeRate(ctx context.Context, arg GetExchangeRateParams
 		&i.QuoteCurrency,
 		&i.Rate,
 		&i.Source,
-		&i.FetchedAt,
 	)
 	return i, err
 }
 
 const listExchangeRates = `-- name: ListExchangeRates :many
-SELECT id, base_currency, quote_currency, rate, source, fetched_at
+SELECT id, base_currency, quote_currency, rate, source
 FROM exchange_rates
 WHERE base_currency = $1
   AND quote_currency = $2
@@ -113,7 +111,6 @@ func (q *Queries) ListExchangeRates(ctx context.Context, arg ListExchangeRatesPa
 			&i.QuoteCurrency,
 			&i.Rate,
 			&i.Source,
-			&i.FetchedAt,
 		); err != nil {
 			return nil, err
 		}

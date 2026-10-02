@@ -29,10 +29,10 @@ test:
 	go test -v ./...
 test-nocache:
 	go test -count=1 ./...
-# Reset the database, then run all tests
+
+
 testfresh: resetdb test
 
-# Nuclear option: removes the container AND the volume
 clean:
 	docker stop postgres12 || true
 	docker rm postgres12 || true

@@ -145,12 +145,11 @@ type Entry struct {
 }
 
 type ExchangeRate struct {
-	ID            int64              `json:"id"`
-	BaseCurrency  string             `json:"base_currency"`
-	QuoteCurrency string             `json:"quote_currency"`
-	Rate          pgtype.Numeric     `json:"rate"`
-	Source        pgtype.Text        `json:"source"`
-	FetchedAt     pgtype.Timestamptz `json:"fetched_at"`
+	ID            int64          `json:"id"`
+	BaseCurrency  string         `json:"base_currency"`
+	QuoteCurrency string         `json:"quote_currency"`
+	Rate          pgtype.Numeric `json:"rate"`
+	Source        pgtype.Text    `json:"source"`
 }
 
 type Fee struct {

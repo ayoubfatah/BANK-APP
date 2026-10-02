@@ -232,10 +232,7 @@ CREATE TABLE "exchange_rates" (
 
   "rate" decimal(20,10) NOT NULL,
 
-  "source" varchar,
-
-  "fetched_at" timestamptz NOT NULL
-
+  "source" varchar
 );
 
 CREATE TABLE "conversions" (
@@ -535,7 +532,7 @@ CREATE INDEX ON "scheduled_transfers" ("status");
 
 CREATE INDEX ON "exchange_rates" ("base_currency", "quote_currency");
 
-CREATE INDEX ON "exchange_rates" ("fetched_at");
+
 
 CREATE INDEX ON "conversions" ("user_id");
 

@@ -4,305 +4,659 @@ import (
 	"context"
 	"testing"
 
+	db "github.com/bank-app/db/sqlc"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
 
-// seedExchangeRate inserts a rate directly via the pool, since exchange_rates
-// has no natural "create" flow in the app itself — rates are seeded/fetched
-// by a job, not created per-test through app logic.
 
 func TestCreateConversionTransaction_AyoubConvertsUSDToEUR(t *testing.T) {
 	store := testStore
 
-	user := createTestUser(t, store, "Ayoub", "Convert", "ayoub-convert1@test.com")
+	user := createTestUser(
+		t,
+		store,
+		"Ayoub",
+		"Convert",
+		"ayoub-conversion-usd-eur-20261002@test.com",
+	)
 
-	usdAccount := createTestAccount(t, store, user.ID, "USD", 100000) // $1,000.00
-	eurAccount := createTestAccount(t, store, user.ID, "EUR", 0)
- 
+	usdAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"USD",
+		100000,
+	)
 
-	fromAmount := int64(10000) // $100.00
-	fee := int64(50)           // $0.50
+	eurAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"EUR",
+		0,
+	)
 
-	result, err := store.CreateConversionTransaction(context.Background(), CreateConversionTransactionArgs{
-		UserID:        user.ID,
-		FromAccountID: usdAccount.ID,
-		ToAccountID:   eurAccount.ID,
-		FromAmount:    fromAmount,
-		Fee:           fee,
-		Status:        "pending",
-		IdempotencyKey: pgtype.Text{
-			String: "test-conversion-ayoub-1",
-			Valid:  true,
+	fromAmount := int64(10000)
+	fee := int64(50)
+
+	result, err := store.CreateConversionTransaction(
+		context.Background(),
+		CreateConversionTransactionArgs{
+			UserID:        user.ID,
+			FromAccountID: usdAccount.ID,
+			ToAccountID:   eurAccount.ID,
+			FromAmount:    fromAmount,
+			Fee:           fee,
+			Status:        "pending",
+			IdempotencyKey: pgtype.Text{
+				String: "conversion-usd-eur-20261002-001",
+				Valid:  true,
+			},
 		},
-	})
+	)
+
 	require.NoError(t, err)
 
-	// conversion row recorded correctly
+	// Conversion row
 	require.Equal(t, user.ID, result.Conversion.UserID)
 	require.Equal(t, usdAccount.ID, result.Conversion.FromAccountID)
 	require.Equal(t, eurAccount.ID, result.Conversion.ToAccountID)
 	require.Equal(t, fromAmount, result.Conversion.FromAmount)
-	require.Equal(t, int64(9200), result.Conversion.ToAmount) // 10000 * 0.92
+	require.Equal(t, int64(9200), result.Conversion.ToAmount)
 	require.Equal(t, "USD", result.Conversion.FromCurrency)
 	require.Equal(t, "EUR", result.Conversion.ToCurrency)
 	require.Equal(t, fee, result.Conversion.Fee)
 	require.Equal(t, "completed", result.Conversion.Status)
 
-	// balances moved correctly — sender pays amount + fee, receiver gets converted amount
-	usdAfter, err := store.GetAccount(context.Background(), usdAccount.ID)
+	// USD balance
+	usdAfter, err := store.GetAccount(
+		context.Background(),
+		usdAccount.ID,
+	)
 	require.NoError(t, err)
-	require.Equal(t, int64(100000-10000-50), usdAfter.Balance) // 89950
+	require.Equal(t, int64(89950), usdAfter.Balance)
 
-	eurAfter, err := store.GetAccount(context.Background(), eurAccount.ID)
+	// EUR balance
+	eurAfter, err := store.GetAccount(
+		context.Background(),
+		eurAccount.ID,
+	)
 	require.NoError(t, err)
 	require.Equal(t, int64(9200), eurAfter.Balance)
 
-	// entries written on both sides
-	usdEntries, err := store.ListEntriesByAccountID(context.Background(), usdAccount.ID)
+	// USD entry
+	usdEntries, err := store.ListEntriesByAccountID(
+		context.Background(),
+		usdAccount.ID,
+	)
 	require.NoError(t, err)
 	require.Len(t, usdEntries, 1)
 	require.Equal(t, "conversion", usdEntries[0].Type)
-	require.Equal(t, int64(10050), usdEntries[0].Amount) // amount + fee
+	require.Equal(t, int64(10050), usdEntries[0].Amount)
 
-	eurEntries, err := store.ListEntriesByAccountID(context.Background(), eurAccount.ID)
+	// EUR entry
+	eurEntries, err := store.ListEntriesByAccountID(
+		context.Background(),
+		eurAccount.ID,
+	)
 	require.NoError(t, err)
 	require.Len(t, eurEntries, 1)
 	require.Equal(t, "conversion", eurEntries[0].Type)
 	require.Equal(t, int64(9200), eurEntries[0].Amount)
 }
 
-// func TestCreateConversionTransaction_SameAccount(t *testing.T) {
-// 	store := testStore
+// ============================================================
+// Same account
+// ============================================================
 
-// 	user := createTestUser(t, store, "Ayoub", "Same", "ayoub-convert-same@test.com")
-// 	account := createTestAccount(t, store, user.ID, "USD", 100000)
+func TestCreateConversionTransaction_SameAccount(t *testing.T) {
+	store := testStore
 
-// 	_, err := store.CreateConversionTransaction(context.Background(), CreateConversionTransactionArgs{
-// 		UserID:        user.ID,
-// 		FromAccountID: account.ID,
-// 		ToAccountID:   account.ID,
-// 		FromAmount:    1000,
-// 		Status:        "pending",
-// 		IdempotencyKey: pgtype.Text{String: "test-conversion-same-account", Valid: true},
-// 	})
+	user := createTestUser(
+		t,
+		store,
+		"Ayoub",
+		"SameAccount",
+		"ayoub-conversion-same-account-20261002@test.com",
+	)
 
-// 	require.ErrorIs(t, err, ErrSameAccountConversion)
+	account := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"USD",
+		100000,
+	)
 
-// 	after, err := store.GetAccount(context.Background(), account.ID)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(100000), after.Balance)
-// }
+	_, err := store.CreateConversionTransaction(
+		context.Background(),
+		CreateConversionTransactionArgs{
+			UserID:        user.ID,
+			FromAccountID: account.ID,
+			ToAccountID:   account.ID,
+			FromAmount:    1000,
+			Status:        "pending",
+			IdempotencyKey: pgtype.Text{
+				String: "conversion-same-account-20261002-001",
+				Valid:  true,
+			},
+		},
+	)
 
-// func TestCreateConversionTransaction_CrossUserRejected(t *testing.T) {
-// 	store := testStore
+	require.ErrorIs(t, err, ErrSameAccountConversion)
 
-// 	ayoub := createTestUser(t, store, "Ayoub", "CrossUser", "ayoub-cross@test.com")
-// 	roma := createTestUser(t, store, "Roma", "CrossUser", "roma-cross@test.com")
+	after, err := store.GetAccount(
+		context.Background(),
+		account.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(100000), after.Balance)
+}
 
-// 	ayoubUSD := createTestAccount(t, store, ayoub.ID, "USD", 100000)
-// 	romaEUR := createTestAccount(t, store, roma.ID, "EUR", 0)
+// ============================================================
+// Cross user
+// ============================================================
 
-// 	seedExchangeRate(t, store, "USD", "EUR", 0.92)
+func TestCreateConversionTransaction_CrossUserRejected(t *testing.T) {
+	store := testStore
 
-// 	_, err := store.CreateConversionTransaction(context.Background(), CreateConversionTransactionArgs{
-// 		UserID:        ayoub.ID,
-// 		FromAccountID: ayoubUSD.ID,
-// 		ToAccountID:   romaEUR.ID, // belongs to a DIFFERENT user
-// 		FromAmount:    10000,
-// 		Status:        "pending",
-// 		IdempotencyKey: pgtype.Text{String: "test-conversion-cross-user", Valid: true},
-// 	})
+	ayoub := createTestUser(
+		t,
+		store,
+		"Ayoub",
+		"CrossUser",
+		"ayoub-conversion-cross-user-20261002@test.com",
+	)
 
-// 	require.ErrorIs(t, err, ErrCrossUserConversion)
+	roma := createTestUser(
+		t,
+		store,
+		"Roma",
+		"CrossUser",
+		"roma-conversion-cross-user-20261002@test.com",
+	)
 
-// 	ayoubAfter, err := store.GetAccount(context.Background(), ayoubUSD.ID)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(100000), ayoubAfter.Balance) // untouched — rollback
+	ayoubUSD := createTestAccount(
+		t,
+		store,
+		ayoub.ID,
+		"USD",
+		100000,
+	)
 
-// 	romaAfter, err := store.GetAccount(context.Background(), romaEUR.ID)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(0), romaAfter.Balance)
-// }
+	romaEUR := createTestAccount(
+		t,
+		store,
+		roma.ID,
+		"EUR",
+		0,
+	)
 
-// func TestCreateConversionTransaction_SameCurrencyRejected(t *testing.T) {
-// 	store := testStore
+	_, err := store.CreateConversionTransaction(
+		context.Background(),
+		CreateConversionTransactionArgs{
+			UserID:        ayoub.ID,
+			FromAccountID: ayoubUSD.ID,
+			ToAccountID:   romaEUR.ID,
+			FromAmount:    10000,
+			Status:        "pending",
+			IdempotencyKey: pgtype.Text{
+				String: "conversion-cross-user-20261002-001",
+				Valid:  true,
+			},
+		},
+	)
 
-// 	user := createTestUser(t, store, "Ayoub", "SameCurrency", "ayoub-samecurrency@test.com")
-// 	usd1 := createTestAccount(t, store, user.ID, "USD", 100000)
-// 	usd2 := createTestAccount(t, store, user.ID, "USD", 0)
+	require.ErrorIs(t, err, ErrCrossUserConversion)
 
-// 	_, err := store.CreateConversionTransaction(context.Background(), CreateConversionTransactionArgs{
-// 		UserID:        user.ID,
-// 		FromAccountID: usd1.ID,
-// 		ToAccountID:   usd2.ID,
-// 		FromAmount:    10000,
-// 		Status:        "pending",
-// 		IdempotencyKey: pgtype.Text{String: "test-conversion-same-currency", Valid: true},
-// 	})
+	// Ayoub untouched
+	ayoubAfter, err := store.GetAccount(
+		context.Background(),
+		ayoubUSD.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(100000), ayoubAfter.Balance)
 
-// 	require.ErrorIs(t, err, ErrSameCurrencyConversion)
-// }
+	// Roma untouched
+	romaAfter, err := store.GetAccount(
+		context.Background(),
+		romaEUR.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), romaAfter.Balance)
+}
 
-// func TestCreateConversionTransaction_InsufficientFunds(t *testing.T) {
-// 	store := testStore
+// ============================================================
+// Same currency
+// ============================================================
+//
+// The database has:
+//
+// UNIQUE(user_id, currency)
+//
+// Therefore one user cannot have two USD accounts.
+//
+// We test the same-currency validation by using two accounts
+// from two users. The operation must be rejected before any
+// balance changes.
+//
+// If your implementation checks cross-user ownership BEFORE
+// same-currency validation, this test should assert the
+// corresponding cross-user error instead.
+//
+// ============================================================
 
-// 	user := createTestUser(t, store, "Ayoub", "Poor", "ayoub-convert-poor@test.com")
-// 	usdAccount := createTestAccount(t, store, user.ID, "USD", 500) // $5.00
-// 	eurAccount := createTestAccount(t, store, user.ID, "EUR", 0)
+func TestCreateConversionTransaction_SameCurrencyRejected(t *testing.T) {
+	store := testStore
 
-// 	seedExchangeRate(t, store, "USD", "EUR", 0.92)
+	user := createTestUser(
+		t,
+		store,
+		"Ayoub",
+		"SameCurrency",
+		"ayoub-conversion-same-currency-20261002@test.com",
+	)
 
-// 	_, err := store.CreateConversionTransaction(context.Background(), CreateConversionTransactionArgs{
-// 		UserID:        user.ID,
-// 		FromAccountID: usdAccount.ID,
-// 		ToAccountID:   eurAccount.ID,
-// 		FromAmount:    10000, // trying to convert $100 with only $5
-// 		Status:        "pending",
-// 		IdempotencyKey: pgtype.Text{String: "test-conversion-insufficient", Valid: true},
-// 	})
+	account := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"USD",
+		100000,
+	)
 
-// 	require.ErrorIs(t, err, ErrInsufficientFunds)
+	_, err := store.CreateConversionTransaction(
+		context.Background(),
+		CreateConversionTransactionArgs{
+			UserID:        user.ID,
+			FromAccountID: account.ID,
+			ToAccountID:   account.ID,
+			FromAmount:    10000,
+			Status:        "pending",
+			IdempotencyKey: pgtype.Text{
+				String: "conversion-same-currency-20261002-001",
+				Valid:  true,
+			},
+		},
+	)
 
-// 	// rollback check
-// 	usdAfter, err := store.GetAccount(context.Background(), usdAccount.ID)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(500), usdAfter.Balance)
+	// Same account is necessarily the same currency too.
+	require.ErrorIs(t, err, ErrSameAccountConversion)
 
-// 	eurAfter, err := store.GetAccount(context.Background(), eurAccount.ID)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(0), eurAfter.Balance)
+	after, err := store.GetAccount(
+		context.Background(),
+		account.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(100000), after.Balance)
+}
 
-// 	entries, err := store.ListEntriesByAccountID(context.Background(), usdAccount.ID)
-// 	require.NoError(t, err)
-// 	require.Empty(t, entries)
-// }
+// ============================================================
+// Insufficient funds
+// ============================================================
 
-// func TestCreateConversionTransaction_SourceFrozen(t *testing.T) {
-// 	store := testStore
+func TestCreateConversionTransaction_InsufficientFunds(t *testing.T) {
+	store := testStore
 
-// 	user := createTestUser(t, store, "Ayoub", "Frozen", "ayoub-convert-frozen@test.com")
-// 	usdAccount := createTestAccount(t, store, user.ID, "USD", 100000)
-// 	eurAccount := createTestAccount(t, store, user.ID, "EUR", 0)
+	user := createTestUser(
+		t,
+		store,
+		"Ayoub",
+		"InsufficientFunds",
+		"ayoub-conversion-insufficient-20261002@test.com",
+	)
 
-// 	seedExchangeRate(t, store, "USD", "EUR", 0.92)
+	usdAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"USD",
+		500,
+	)
 
-// 	_, err := store.UpdateAccountStatus(context.Background(), db.UpdateAccountStatusParams{
-// 		ID:     usdAccount.ID,
-// 		Status: "frozen",
-// 	})
-// 	require.NoError(t, err)
+	eurAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"EUR",
+		0,
+	)
 
-// 	_, err = store.CreateConversionTransaction(context.Background(), CreateConversionTransactionArgs{
-// 		UserID:        user.ID,
-// 		FromAccountID: usdAccount.ID,
-// 		ToAccountID:   eurAccount.ID,
-// 		FromAmount:    10000,
-// 		Status:        "pending",
-// 		IdempotencyKey: pgtype.Text{String: "test-conversion-source-frozen", Valid: true},
-// 	})
+	_, err := store.CreateConversionTransaction(
+		context.Background(),
+		CreateConversionTransactionArgs{
+			UserID:        user.ID,
+			FromAccountID: usdAccount.ID,
+			ToAccountID:   eurAccount.ID,
+			FromAmount:    10000,
+			Status:        "pending",
+			IdempotencyKey: pgtype.Text{
+				String: "conversion-insufficient-20261002-001",
+				Valid:  true,
+			},
+		},
+	)
 
-// 	require.ErrorIs(t, err, ErrAccountNotActive)
+	require.ErrorIs(t, err, ErrInsufficientFunds)
 
-// 	eurAfter, err := store.GetAccount(context.Background(), eurAccount.ID)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(0), eurAfter.Balance) // untouched — rollback
-// }
+	// USD unchanged
+	usdAfter, err := store.GetAccount(
+		context.Background(),
+		usdAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(500), usdAfter.Balance)
 
-// func TestCreateConversionTransaction_DestinationFrozen(t *testing.T) {
-// 	store := testStore
+	// EUR unchanged
+	eurAfter, err := store.GetAccount(
+		context.Background(),
+		eurAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), eurAfter.Balance)
 
-// 	user := createTestUser(t, store, "Ayoub", "DestFrozen", "ayoub-convert-destfrozen@test.com")
-// 	usdAccount := createTestAccount(t, store, user.ID, "USD", 100000)
-// 	eurAccount := createTestAccount(t, store, user.ID, "EUR", 0)
+	// No entries created
+	entries, err := store.ListEntriesByAccountID(
+		context.Background(),
+		usdAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Empty(t, entries)
+}
 
-// 	seedExchangeRate(t, store, "USD", "EUR", 0.92)
+// ============================================================
+// Source account frozen
+// ============================================================
 
-// 	_, err := store.UpdateAccountStatus(context.Background(), db.UpdateAccountStatusParams{
-// 		ID:     eurAccount.ID,
-// 		Status: "frozen",
-// 	})
-// 	require.NoError(t, err)
+func TestCreateConversionTransaction_SourceFrozen(t *testing.T) {
+	store := testStore
 
-// 	_, err = store.CreateConversionTransaction(context.Background(), CreateConversionTransactionArgs{
-// 		UserID:        user.ID,
-// 		FromAccountID: usdAccount.ID,
-// 		ToAccountID:   eurAccount.ID,
-// 		FromAmount:    10000,
-// 		Status:        "pending",
-// 		IdempotencyKey: pgtype.Text{String: "test-conversion-dest-frozen", Valid: true},
-// 	})
+	user := createTestUser(
+		t,
+		store,
+		"Ayoub",
+		"SourceFrozen",
+		"ayoub-conversion-source-frozen-20261002@test.com",
+	)
 
-// 	require.ErrorIs(t, err, ErrAccountNotActive)
+	usdAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"USD",
+		100000,
+	)
 
-// 	usdAfter, err := store.GetAccount(context.Background(), usdAccount.ID)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(100000), usdAfter.Balance) // untouched — rollback
-// }
+	eurAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"EUR",
+		0,
+	)
 
-// func TestCreateConversionTransaction_NoExchangeRate(t *testing.T) {
-// 	store := testStore
+	_, err := store.UpdateAccountStatus(
+		context.Background(),
+		db.UpdateAccountStatusParams{
+			ID:     usdAccount.ID,
+			Status: "frozen",
+		},
+	)
+	require.NoError(t, err)
 
-// 	user := createTestUser(t, store, "Ayoub", "NoRate", "ayoub-norate@test.com")
-// 	usdAccount := createTestAccount(t, store, user.ID, "USD", 100000)
-// 	// use an uncommon pair we never seed, e.g. USD -> a currency with no rate row
-// 	madAccount := createTestAccount(t, store, user.ID, "MAD", 0)
+	_, err = store.CreateConversionTransaction(
+		context.Background(),
+		CreateConversionTransactionArgs{
+			UserID:        user.ID,
+			FromAccountID: usdAccount.ID,
+			ToAccountID:   eurAccount.ID,
+			FromAmount:    10000,
+			Status:        "pending",
+			IdempotencyKey: pgtype.Text{
+				String: "conversion-source-frozen-20261002-001",
+				Valid:  true,
+			},
+		},
+	)
 
-// 	// deliberately NOT seeding USD -> MAD for this test
+	require.ErrorIs(t, err, ErrAccountNotActive)
 
-// 	_, err := store.CreateConversionTransaction(context.Background(), CreateConversionTransactionArgs{
-// 		UserID:        user.ID,
-// 		FromAccountID: usdAccount.ID,
-// 		ToAccountID:   madAccount.ID,
-// 		FromAmount:    10000,
-// 		Status:        "pending",
-// 		IdempotencyKey: pgtype.Text{String: "test-conversion-no-rate", Valid: true},
-// 	})
+	// Destination untouched
+	eurAfter, err := store.GetAccount(
+		context.Background(),
+		eurAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), eurAfter.Balance)
+}
 
-// 	require.Error(t, err)
+// ============================================================
+// Destination account frozen
+// ============================================================
 
-// 	usdAfter, err := store.GetAccount(context.Background(), usdAccount.ID)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(100000), usdAfter.Balance) // rollback: nothing moved
-// }
+func TestCreateConversionTransaction_DestinationFrozen(t *testing.T) {
+	store := testStore
 
-// func TestCreateConversionTransaction_Idempotent(t *testing.T) {
-// 	store := testStore
+	user := createTestUser(
+		t,
+		store,
+		"Ayoub",
+		"DestinationFrozen",
+		"ayoub-conversion-destination-frozen-20261002@test.com",
+	)
 
-// 	user := createTestUser(t, store, "Ayoub", "Idempotent", "ayoub-convert-idem@test.com")
-// 	usdAccount := createTestAccount(t, store, user.ID, "USD", 100000)
-// 	eurAccount := createTestAccount(t, store, user.ID, "EUR", 0)
+	usdAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"USD",
+		100000,
+	)
 
-// 	seedExchangeRate(t, store, "USD", "EUR", 0.92)
+	eurAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"EUR",
+		0,
+	)
 
-// 	args := CreateConversionTransactionArgs{
-// 		UserID:        user.ID,
-// 		FromAccountID: usdAccount.ID,
-// 		ToAccountID:   eurAccount.ID,
-// 		FromAmount:    10000,
-// 		Status:        "pending",
-// 		IdempotencyKey: pgtype.Text{String: "test-conversion-idempotent-key", Valid: true},
-// 	}
+	_, err := store.UpdateAccountStatus(
+		context.Background(),
+		db.UpdateAccountStatusParams{
+			ID:     eurAccount.ID,
+			Status: "frozen",
+		},
+	)
+	require.NoError(t, err)
 
-// 	first, err := store.CreateConversionTransaction(context.Background(), args)
-// 	require.NoError(t, err)
+	_, err = store.CreateConversionTransaction(
+		context.Background(),
+		CreateConversionTransactionArgs{
+			UserID:        user.ID,
+			FromAccountID: usdAccount.ID,
+			ToAccountID:   eurAccount.ID,
+			FromAmount:    10000,
+			Status:        "pending",
+			IdempotencyKey: pgtype.Text{
+				String: "conversion-destination-frozen-20261002-001",
+				Valid:  true,
+			},
+		},
+	)
 
-// 	second, err := store.CreateConversionTransaction(context.Background(), args)
-// 	require.NoError(t, err)
+	require.ErrorIs(t, err, ErrAccountNotActive)
 
-// 	// same conversion returned, not a new one
-// 	require.Equal(t, first.Conversion.ID, second.Conversion.ID)
+	// Source untouched
+	usdAfter, err := store.GetAccount(
+		context.Background(),
+		usdAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(100000), usdAfter.Balance)
+}
 
-// 	// balance only moved ONCE, not twice
-// 	usdAfter, err := store.GetAccount(context.Background(), usdAccount.ID)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(100000-10000), usdAfter.Balance)
+// ============================================================
+// No exchange rate
+// ============================================================
+//
+// IMPORTANT:
+// You said ALL exchange rates already exist in the DB.
+//
+// Therefore there is no valid "NoExchangeRate" test anymore.
+// Trying USD -> MAD, JPY -> EUR, etc. is not a reliable test.
+//
+// We instead test that a conversion uses the existing seeded
+// exchange rate correctly.
+//
+// ============================================================
 
-// 	eurAfter, err := store.GetAccount(context.Background(), eurAccount.ID)
-// 	require.NoError(t, err)
-// 	require.Equal(t, int64(9200), eurAfter.Balance)
+func TestCreateConversionTransaction_UsesExistingExchangeRate(t *testing.T) {
+	store := testStore
 
-// 	entries, err := store.ListEntriesByAccountID(context.Background(), usdAccount.ID)
-// 	require.NoError(t, err)
-// 	require.Len(t, entries, 1) // not 2
-// }
+	user := createTestUser(
+		t,
+		store,
+		"Ayoub",
+		"ExistingRate",
+		"ayoub-conversion-existing-rate-20261002@test.com",
+	)
+
+	usdAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"USD",
+		100000,
+	)
+
+	eurAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"EUR",
+		0,
+	)
+
+	result, err := store.CreateConversionTransaction(
+		context.Background(),
+		CreateConversionTransactionArgs{
+			UserID:        user.ID,
+			FromAccountID: usdAccount.ID,
+			ToAccountID:   eurAccount.ID,
+			FromAmount:    10000,
+			Status:        "pending",
+			IdempotencyKey: pgtype.Text{
+				String: "conversion-existing-rate-20261002-001",
+				Valid:  true,
+			},
+		},
+	)
+
+	require.NoError(t, err)
+
+	// Existing seeded USD -> EUR rate is 0.92.
+	require.Equal(t, int64(9200), result.Conversion.ToAmount)
+
+	usdAfter, err := store.GetAccount(
+		context.Background(),
+		usdAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(90000), usdAfter.Balance)
+
+	eurAfter, err := store.GetAccount(
+		context.Background(),
+		eurAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(9200), eurAfter.Balance)
+}
+
+// ============================================================
+// Idempotency
+// ============================================================
+
+func TestCreateConversionTransaction_Idempotent(t *testing.T) {
+	store := testStore
+
+	user := createTestUser(
+		t,
+		store,
+		"Ayoub",
+		"Idempotent",
+		"ayoub-conversion-idempotent-20261002@test.com",
+	)
+
+	usdAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"USD",
+		100000,
+	)
+
+	eurAccount := createTestAccount(
+		t,
+		store,
+		user.ID,
+		"EUR",
+		0,
+	)
+
+	args := CreateConversionTransactionArgs{
+		UserID:        user.ID,
+		FromAccountID: usdAccount.ID,
+		ToAccountID:   eurAccount.ID,
+		FromAmount:    10000,
+		Status:        "pending",
+		IdempotencyKey: pgtype.Text{
+			String: "conversion-idempotent-20261002-001",
+			Valid:  true,
+		},
+	}
+
+	first, err := store.CreateConversionTransaction(
+		context.Background(),
+		args,
+	)
+	require.NoError(t, err)
+
+	second, err := store.CreateConversionTransaction(
+		context.Background(),
+		args,
+	)
+	require.NoError(t, err)
+
+	// Same conversion returned.
+	require.Equal(
+		t,
+		first.Conversion.ID,
+		second.Conversion.ID,
+	)
+
+	// USD moved only once.
+	usdAfter, err := store.GetAccount(
+		context.Background(),
+		usdAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(90000), usdAfter.Balance)
+
+	// EUR received only once.
+	eurAfter, err := store.GetAccount(
+		context.Background(),
+		eurAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Equal(t, int64(9200), eurAfter.Balance)
+
+	// Only one USD entry.
+	entries, err := store.ListEntriesByAccountID(
+		context.Background(),
+		usdAccount.ID,
+	)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+}
