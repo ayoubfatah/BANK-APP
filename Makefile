@@ -33,9 +33,15 @@ test-nocache:
 
 testfresh: resetdb test
 
+server:
+	go run main.go
+
+createmigration:
+	migrate create -ext sql -dir db/migration -seq $(name)
+
 clean:
 	docker stop postgres12 || true
 	docker rm postgres12 || true
 	docker volume rm bank-app-postgres-data || true
 
-.PHONY: postgres createdb dropdb migrationup migrationdown resetdb sqlc test testfresh test-nocache clean 
+.PHONY: postgres createdb dropdb migrationup migrationdown resetdb sqlc test testfresh test-nocache clean server  createmigration
