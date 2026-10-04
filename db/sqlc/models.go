@@ -268,10 +268,13 @@ type Transfer struct {
 }
 
 type User struct {
-	ID           int64       `json:"id"`
-	FirstName    string      `json:"first_name"`
-	LastName     string      `json:"last_name"`
-	Email        string      `json:"email"`
+	ID        int64  `json:"id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+	// customer, admin
+	Role         string      `json:"role"`
+	Img          pgtype.Text `json:"img"`
 	Phone        pgtype.Text `json:"phone"`
 	PasswordHash string      `json:"password_hash"`
 	// active, suspended, closed

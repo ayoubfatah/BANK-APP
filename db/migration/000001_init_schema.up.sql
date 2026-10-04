@@ -8,6 +8,10 @@ CREATE TABLE "users" (
 
   "email" varchar UNIQUE NOT NULL,
 
+  "role" varchar NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'admin')),
+
+  "img" varchar ,
+
   "phone" varchar UNIQUE,
 
   "password_hash" varchar NOT NULL,
@@ -460,6 +464,7 @@ CREATE TABLE "payment_links" (
 );
 
 
+
 -- ============================================================
 -- INDEXES
 -- ============================================================
@@ -467,6 +472,9 @@ CREATE TABLE "payment_links" (
 CREATE INDEX ON "users" ("email");
 
 CREATE INDEX ON "users" ("phone");
+
+CREATE INDEX ON "users" ("role");
+
 
 CREATE INDEX ON "users" ("status");
 
@@ -664,6 +672,7 @@ IS 'draft, sent, paid, overdue, cancelled';
 COMMENT ON COLUMN "payment_links"."status"
 IS 'active, paid, expired, cancelled';
 
+COMMENT ON COLUMN "users"."role" IS 'customer, admin';
 
 -- ============================================================
 -- FOREIGN KEYS

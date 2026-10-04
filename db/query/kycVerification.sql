@@ -55,3 +55,11 @@ SET
 WHERE id = $1
 RETURNING *;
 
+
+
+-- name: GetLatestKYCByUser :one
+SELECT id, user_id, document_type, document_number, status, rejection_reason, verified_at, created_at
+FROM kyc_verifications
+WHERE user_id = $1
+ORDER BY created_at DESC, id DESC
+LIMIT 1;

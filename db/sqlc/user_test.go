@@ -124,6 +124,10 @@ func TestUpdateUser(t *testing.T) {
 		ID:        newCreatedUser.ID,
 		FirstName: "ayoub",
 		LastName:  "fatah",
+		Img: pgtype.Text{
+			String: "dsfsdfsfsdf",
+			Valid: true,
+		},
 	}
 
 	newUpdatedUser, err := testQueries.UpdateUser(

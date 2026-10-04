@@ -1,0 +1,12 @@
+POST  http://localhost:8080/users
+content-Type: application/json
+
+{  
+	"first_name" :"ayoub",
+	"last_name" :"Fatah",
+	"email" :"sss@gmail.com",
+    "phone":"212638257615",
+	"password" :"12345678",
+	"img":"img trust me ",
+}
+

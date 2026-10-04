@@ -12,7 +12,7 @@ func LoadConfig(path string) (Config, error) {
 	viper.SetConfigName("app")
 	viper.SetConfigType("env")
 
-	viper.AutomaticEnv() // env vars override the file
+	viper.AutomaticEnv() 
 
 	if err := viper.ReadInConfig(); err != nil {
 		return Config{}, err

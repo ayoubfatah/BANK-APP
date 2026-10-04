@@ -120,6 +120,30 @@ func (q *Queries) GetKYCVerificationByUserId(ctx context.Context, userID int64) 
 	return items, nil
 }
 
+const getLatestKYCByUser = `-- name: GetLatestKYCByUser :one
+SELECT id, user_id, document_type, document_number, status, rejection_reason, verified_at, created_at
+FROM kyc_verifications
+WHERE user_id = $1
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLatestKYCByUser(ctx context.Context, userID int64) (KycVerification, error) {
+	row := q.db.QueryRow(ctx, getLatestKYCByUser, userID)
+	var i KycVerification
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.DocumentType,
+		&i.DocumentNumber,
+		&i.Status,
+		&i.RejectionReason,
+		&i.VerifiedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listKYCVerifications = `-- name: ListKYCVerifications :many
 SELECT id, user_id, document_type, document_number, status, rejection_reason, verified_at, created_at 
 FROM kyc_verifications 

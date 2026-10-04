@@ -1,8 +1,8 @@
 -- name: CreateUser :one
 INSERT INTO users (
-  first_name , last_name , email , phone , password_hash  , status 
+  first_name , last_name , email , img , phone , password_hash  , status 
 ) VALUES (
-  $1, $2, $3 ,$4 ,$5 ,$6 
+  $1, $2, $3 ,$4 ,$5 ,$6 , $7 
 )
 RETURNING *;
 
@@ -28,6 +28,7 @@ UPDATE users
 SET
     first_name = $2,
     last_name = $3,
+    img = $4,
     updated_at = now()
 WHERE id = $1
 RETURNING *;
