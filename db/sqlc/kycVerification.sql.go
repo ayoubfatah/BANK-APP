@@ -145,19 +145,20 @@ func (q *Queries) GetLatestKYCByUser(ctx context.Context, userID int64) (KycVeri
 }
 
 const listKYCVerifications = `-- name: ListKYCVerifications :many
-SELECT id, user_id, document_type, document_number, status, rejection_reason, verified_at, created_at 
-FROM kyc_verifications 
-LIMIT $1 
-OFFSET $2
+SELECT id, user_id, document_type, document_number, status, rejection_reason, verified_at, created_at FROM kyc_verifications
+WHERE ($1::text = '' OR status = $1::text)
+ORDER BY created_at DESC, id DESC
+LIMIT $3 OFFSET $2
 `
 
 type ListKYCVerificationsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	Status     string `json:"status"`
+	PageOffset int32  `json:"page_offset"`
+	PageSize   int32  `json:"page_size"`
 }
 
 func (q *Queries) ListKYCVerifications(ctx context.Context, arg ListKYCVerificationsParams) ([]KycVerification, error) {
-	rows, err := q.db.Query(ctx, listKYCVerifications, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listKYCVerifications, arg.Status, arg.PageOffset, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -187,10 +188,8 @@ func (q *Queries) ListKYCVerifications(ctx context.Context, arg ListKYCVerificat
 
 const rejectKYC = `-- name: RejectKYC :one
 UPDATE kyc_verifications
-SET
-    status = 'rejected',
-    rejection_reason = $2
-WHERE id = $1
+SET status = 'rejected', rejection_reason = $2, verified_at = NULL
+WHERE id = $1 AND status = 'pending'
 RETURNING id, user_id, document_type, document_number, status, rejection_reason, verified_at, created_at
 `
 
@@ -217,19 +216,13 @@ func (q *Queries) RejectKYC(ctx context.Context, arg RejectKYCParams) (KycVerifi
 
 const verifyKYC = `-- name: VerifyKYC :one
 UPDATE kyc_verifications
-SET status = $1 ,
-    verified_at = NOW()
-WHERE id = $2
+SET status = 'verified', verified_at = NOW(), rejection_reason = NULL
+WHERE id = $1 AND status = 'pending'
 RETURNING id, user_id, document_type, document_number, status, rejection_reason, verified_at, created_at
 `
 
-type VerifyKYCParams struct {
-	Status string `json:"status"`
-	ID     int64  `json:"id"`
-}
-
-func (q *Queries) VerifyKYC(ctx context.Context, arg VerifyKYCParams) (KycVerification, error) {
-	row := q.db.QueryRow(ctx, verifyKYC, arg.Status, arg.ID)
+func (q *Queries) VerifyKYC(ctx context.Context, id int64) (KycVerification, error) {
+	row := q.db.QueryRow(ctx, verifyKYC, id)
 	var i KycVerification
 	err := row.Scan(
 		&i.ID,

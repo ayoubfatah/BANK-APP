@@ -20,6 +20,7 @@ RETURNING *;
 
 
 
+
 -- name: GetKYCVerificationByUserId :many
 SELECT * 
 FROM kyc_verifications
@@ -32,27 +33,24 @@ FROM kyc_verifications
 WHERE id = $1 LIMIT 1 ;
 
 
--- name: ListKYCVerifications :many 
-SELECT * 
-FROM kyc_verifications 
-LIMIT $1 
-OFFSET $2;
+-- name: ListKYCVerifications :many
+SELECT * FROM kyc_verifications
+WHERE (sqlc.arg(status)::text = '' OR status = sqlc.arg(status)::text)
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
 
 
--- name: VerifyKYC :one 
+-- name: VerifyKYC :one
 UPDATE kyc_verifications
-SET status = $1 ,
-    verified_at = NOW()
-WHERE id = $2
-RETURNING * ;
+SET status = 'verified', verified_at = NOW(), rejection_reason = NULL
+WHERE id = $1 AND status = 'pending'
+RETURNING *;
 
 
 -- name: RejectKYC :one 
 UPDATE kyc_verifications
-SET
-    status = 'rejected',
-    rejection_reason = $2
-WHERE id = $1
+SET status = 'rejected', rejection_reason = $2, verified_at = NULL
+WHERE id = $1 AND status = 'pending'
 RETURNING *;
 
 

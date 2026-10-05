@@ -1,0 +1,2 @@
+POST http://localhost:8080/users/close
+content-Type: application/json

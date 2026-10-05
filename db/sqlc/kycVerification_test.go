@@ -126,8 +126,8 @@ func TestListKYCVerifications(t *testing.T) {
 	}
 
 	arg := ListKYCVerificationsParams{
-	Limit: 5,
-	Offset: 0,
+	PageOffset: 0,
+	PageSize:5,
 	}
 
 	verifications, err := testQueries.ListKYCVerifications(context.Background(),arg)
@@ -156,10 +156,7 @@ func TestUpdateKYCStatusToVerified(t *testing.T) {
 
 	updated, err := testQueries.VerifyKYC(
 		context.Background(),
-		VerifyKYCParams{
-			ID:         verification.ID,
-			Status:     "verified",
-		},
+         verification.ID,
 	)
 
 	require.NoError(t, err)

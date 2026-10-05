@@ -11,6 +11,34 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const closeUserAccount = `-- name: CloseUserAccount :one
+UPDATE userS
+SET 
+    status = 'closed',
+    updated_at = now()
+WHERE id = $1 
+RETURNING id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at
+`
+
+func (q *Queries) CloseUserAccount(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRow(ctx, closeUserAccount, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.Role,
+		&i.Img,
+		&i.Phone,
+		&i.PasswordHash,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
   first_name , last_name , email , img , phone , password_hash  , status 

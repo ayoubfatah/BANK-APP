@@ -65,5 +65,14 @@ WHERE id = $1
 RETURNING *;
 
 
+
+-- name: CloseUserAccount :one
+UPDATE userS
+SET 
+    status = 'closed',
+    updated_at = now()
+WHERE id = $1 
+RETURNING *;
+
 -- name: DeleteUser :exec
 DELETE FROM users WHERE id = $1;

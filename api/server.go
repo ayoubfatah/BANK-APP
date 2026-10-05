@@ -14,12 +14,17 @@ func NewServer(store *store.Store) *Server {
 	server := &Server{store: store}
 	router := gin.Default()
 
-	router.POST("/users", server.CreateUser)
-	router.POST("/users/login", server.LoginUser)
-	router.GET("/users/me", server.GetCurrentUserProfile)
-	router.PATCH("/users/me", server.UpdateCurrentUserProfile)
-	router.PATCH("/users/phone", server.UpdateUserPhone)
-	router.PATCH("/users/email", server.UpdateUserEmail)
+	router.POST("/users", server.createUser)
+	router.POST("/users/login", server.loginUser)
+	router.GET("/users/me", server.getUser)
+	router.PATCH("/users/me", server.updateUser)
+	router.PATCH("/users/phone", server.updateUserPhone)
+	router.PATCH("/users/email", server.updateUserEmail)
+	router.PATCH("/users/password", server.updateUserPassword)
+	router.POST("/users/close", server.closeUserAccount)
+	// kyc
+	router.POST("/users/me/kyc", server.closeUserAccount)
+	
 
 	server.router = router
 	return server
@@ -28,10 +33,4 @@ func NewServer(store *store.Store) *Server {
 func (server *Server) Start(address string) error {
 	return server.router.Run(address)
 }
-
-func errorResponse(err error) gin.H {
-	return gin.H{"error": err.Error()}
-}
-
-
 
