@@ -57,6 +57,7 @@ CREATE TABLE "kyc_verifications" (
   "verified_at" timestamptz,
 
   "created_at" timestamptz NOT NULL DEFAULT (now())
+  
 
 );
 
@@ -543,6 +544,11 @@ CREATE INDEX ON "exchange_rates" ("base_currency", "quote_currency");
 
 
 CREATE INDEX ON "conversions" ("user_id");
+
+
+CREATE UNIQUE INDEX one_active_kyc_per_user
+ON kyc_verifications (user_id)
+WHERE status IN ('pending', 'verified');
 
 CREATE INDEX ON "conversions" ("from_account_id");
 

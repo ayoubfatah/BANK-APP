@@ -145,20 +145,22 @@ func (q *Queries) GetLatestKYCByUser(ctx context.Context, userID int64) (KycVeri
 }
 
 const listKYCVerifications = `-- name: ListKYCVerifications :many
-SELECT id, user_id, document_type, document_number, status, rejection_reason, verified_at, created_at FROM kyc_verifications
-WHERE ($1::text = '' OR status = $1::text)
+SELECT id, user_id, document_type, document_number, status, rejection_reason, verified_at, created_at
+FROM kyc_verifications
+WHERE ($3::text = '' OR status = $3::text)
 ORDER BY created_at DESC, id DESC
-LIMIT $3 OFFSET $2
+LIMIT $1
+OFFSET $2
 `
 
 type ListKYCVerificationsParams struct {
-	Status     string `json:"status"`
-	PageOffset int32  `json:"page_offset"`
-	PageSize   int32  `json:"page_size"`
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+	Status string `json:"status"`
 }
 
 func (q *Queries) ListKYCVerifications(ctx context.Context, arg ListKYCVerificationsParams) ([]KycVerification, error) {
-	rows, err := q.db.Query(ctx, listKYCVerifications, arg.Status, arg.PageOffset, arg.PageSize)
+	rows, err := q.db.Query(ctx, listKYCVerifications, arg.Limit, arg.Offset, arg.Status)
 	if err != nil {
 		return nil, err
 	}

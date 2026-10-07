@@ -34,11 +34,12 @@ WHERE id = $1 LIMIT 1 ;
 
 
 -- name: ListKYCVerifications :many
-SELECT * FROM kyc_verifications
+SELECT *
+FROM kyc_verifications
 WHERE (sqlc.arg(status)::text = '' OR status = sqlc.arg(status)::text)
 ORDER BY created_at DESC, id DESC
-LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
-
+LIMIT $1
+OFFSET $2;
 
 -- name: VerifyKYC :one
 UPDATE kyc_verifications

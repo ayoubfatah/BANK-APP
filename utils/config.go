@@ -5,7 +5,10 @@ import "github.com/spf13/viper"
 type Config struct {
 	DBURL         string `mapstructure:"DB_URL"`
 	ServerAddress string `mapstructure:"SERVER_ADDRESS"`
+	KYCEncryptionKey string `mapstructure:"KYCEncryptionKey"`
 }
+
+
 
 func LoadConfig(path string) (Config, error) {
 	viper.AddConfigPath(path)

@@ -126,8 +126,8 @@ func TestListKYCVerifications(t *testing.T) {
 	}
 
 	arg := ListKYCVerificationsParams{
-	PageOffset: 0,
-	PageSize:5,
+	Offset: 0,
+	Limit:5,
 	}
 
 	verifications, err := testQueries.ListKYCVerifications(context.Background(),arg)
