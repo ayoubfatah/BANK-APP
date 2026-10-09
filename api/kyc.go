@@ -63,7 +63,7 @@ type submitKYCRequest struct {
 	DocumentNumber string `json:"document_number" binding:"required,max=50"`
 }
  
-func (server *Server) SubmitKYC(ctx *gin.Context) {
+func (server *Server) submitKYC(ctx *gin.Context) {
 	userID := int64(1)
  
 	var req submitKYCRequest
@@ -186,11 +186,11 @@ func (server *Server) rejectKYC(ctx *gin.Context){
 
 type listKYCQuery struct {
 	Limit  int32  `form:"limit,default=20"`
-	Offset int32  `form:"offset,default=0"`
+	Page int32  `form:"page,default=1,"`
 	Status string `form:"status" binding:"omitempty,oneof=pending verified rejected"`
 }
 
-func (server *Server) ListKYC(ctx *gin.Context) {
+func (server *Server) listKYC(ctx *gin.Context) {
 	var req listKYCQuery
 
 	if err := ctx.ShouldBindQuery(&req); err != nil {
@@ -210,14 +210,15 @@ func (server *Server) ListKYC(ctx *gin.Context) {
         req.Limit = maxLimit
     }
 
-    if req.Offset < 0 {
-        req.Offset = 0
+    if req.Page < 0 {
+        req.Page = 1
     }
+	offset := (req.Page - 1 ) * req.Limit 
 	
 	rows, err := server.store.ListKYCVerifications(ctx, db.ListKYCVerificationsParams{
 		Status: req.Status,
 		Limit:  req.Limit,
-		Offset: req.Offset,
+		Offset: offset ,
 	})
 	if err != nil {
 		handleDBError(ctx, err)
@@ -233,7 +234,7 @@ func (server *Server) ListKYC(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"data":   out,
 		"limit":  req.Limit,
-		"offset": req.Offset,
+		"offset": offset,
 	})
 }
 

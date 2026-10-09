@@ -53,3 +53,8 @@ SET
     is_active= $2
 WHERE code = $1
 RETURNING *;
+
+
+-- name: ListActiveCurrencies :many
+SELECT * FROM currencies
+WHERE is_active = true;

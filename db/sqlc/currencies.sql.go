@@ -85,6 +85,38 @@ func (q *Queries) GetCurrency(ctx context.Context, code string) (Currency, error
 	return i, err
 }
 
+const listActiveCurrencies = `-- name: ListActiveCurrencies :many
+SELECT code, name, symbol, decimals, is_active, created_at FROM currencies
+WHERE is_active = true
+`
+
+func (q *Queries) ListActiveCurrencies(ctx context.Context) ([]Currency, error) {
+	rows, err := q.db.Query(ctx, listActiveCurrencies)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Currency{}
+	for rows.Next() {
+		var i Currency
+		if err := rows.Scan(
+			&i.Code,
+			&i.Name,
+			&i.Symbol,
+			&i.Decimals,
+			&i.IsActive,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCurrencies = `-- name: ListCurrencies :many
 SELECT code, name, symbol, decimals, is_active, created_at
 FROM currencies

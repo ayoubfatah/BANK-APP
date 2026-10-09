@@ -55,13 +55,19 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		return
 	}
 
+	accessToken , err := server.tokenMaker.CreateToken(
+		user.Email,
+		server.config.AccessTokenDuration,
+	)
 
 	if err != nil {
-		handleDBError(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-
+	
+	
 	ctx.JSON(http.StatusOK, loginUserResponse{
 		User:                 newUserResponse(user),
+		AccessToken: accessToken,
 	})
 }
