@@ -12,20 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// TODO [config]     add TOKEN_SYMMETRIC_KEY (32+ chars), ACCESS_TOKEN_DURATION, REFRESH_TOKEN_DURATION
-// TODO [token]      token maker (JWT): CreateToken(userID, duration) + VerifyToken(token)
-// TODO [middleware] authMiddleware: read "Authorization: Bearer <token>", verify, load the user,
-//                   reject if status != "active", put {UserID, Role} in the gin context
-// TODO [middleware] adminMiddleware: reject if role != "admin"
-// TODO [middleware] apply auth to /users/me*, /users/phone|email|password|close, /users/me/kyc
-//                   apply auth + admin to /admin/*
-// TODO [handlers]   every "userID := int64(1)" / "id := int64(1)" -> read from the token
-// TODO [login]      after the password check: reject non-active users, create access token,
-//                   create refresh token (store only its HASH in refresh_tokens), return both
-// TODO [endpoints]  POST /auth/refresh, POST /auth/logout, POST /auth/logout-all
-// TODO [sqlc]       CreateRefreshToken, GetRefreshTokenByHash, RevokeRefreshToken, RevokeAllUserRefreshTokens
-// TODO [admin]      admins must not be able to change status / role / delete THEMSELVES
-// ======================================================================
 
 type createUserRequest struct {
 	FirstName string `json:"first_name" binding:"required"`

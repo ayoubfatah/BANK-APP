@@ -27,6 +27,7 @@ func NewServer(config utils.Config, store *store.Store) (*Server, error) {
 		store:      store,
 		tokenMaker: tokenMaker,
 	}
+
 	server.setupRouter()
 
 	return server, nil
@@ -35,51 +36,69 @@ func NewServer(config utils.Config, store *store.Store) (*Server, error) {
 func (server *Server) setupRouter() {
 	router := gin.Default()
 
-	server.registerUserRoutes(router)
-	server.registerKYCRoutes(router)
-	server.registerCurrencyRoutes(router)
+	// Public routes
+	server.registerPublicUserRoutes(router)
+	server.registerPublicCurrencyRoutes(router)
+
+	// Authenticated routes
+	auth := router.Group("/")
+	auth.Use(authMiddleware(server.tokenMaker))
+
+	server.registerAuthenticatedUserRoutes(auth)
+	server.registerAuthenticatedKYCRoutes(auth)
+
+	// Admin routes
+	admin := router.Group("/admin")
+	admin.Use(authMiddleware(server.tokenMaker))
+	admin.Use(adminMiddleware())
+
+	server.registerAdminUserRoutes(admin)
+	server.registerAdminKYCRoutes(admin)
+	server.registerAdminCurrencyRoutes(admin)
 
 	server.router = router
 }
 
-func (server *Server) registerUserRoutes(router *gin.Engine) {
+func (server *Server) registerPublicUserRoutes(router gin.IRoutes) {
 	router.POST("/users", server.createUser)
 	router.POST("/users/login", server.loginUser)
+}
 
+func (server *Server) registerAuthenticatedUserRoutes(router gin.IRoutes) {
 	router.GET("/users/me", server.getUser)
 	router.PATCH("/users/me", server.updateUser)
 	router.PATCH("/users/phone", server.updateUserPhone)
 	router.PATCH("/users/email", server.updateUserEmail)
 	router.PATCH("/users/password", server.updateUserPassword)
 	router.POST("/users/close", server.closeUserAccount)
-
-	// Admin
-	admin := router.Group("/admin/users")
-	admin.GET("", server.listUsers)
-	admin.GET("/:id", server.getUserByAdmin)
-	admin.PATCH("/:id/status", server.setUserStatus)
-	admin.PATCH("/:id", server.closeUserAccountByAdmin)
 }
 
-func (server *Server) registerKYCRoutes(router *gin.Engine) {
+func (server *Server) registerAuthenticatedKYCRoutes(router gin.IRoutes) {
 	router.POST("/users/me/kyc", server.submitKYC)
 	router.GET("/users/me/kyc", server.getKYCStatus)
-
-	// Admin
-	admin := router.Group("/admin/kyc")
-	admin.GET("", server.listKYC)
-	admin.PATCH("/:id/verify", server.verifyKYC)
-	admin.PATCH("/:id/reject", server.rejectKYC)
 }
 
-func (server *Server) registerCurrencyRoutes(router *gin.Engine) {
+func (server *Server) registerAdminUserRoutes(admin gin.IRoutes) {
+	admin.GET("/users", server.listUsers)
+	admin.GET("/users/:id", server.getUserByAdmin)
+	admin.PATCH("/users/:id/status", server.setUserStatus)
+	admin.PATCH("/users/:id", server.closeUserAccountByAdmin)
+}
+
+func (server *Server) registerAdminKYCRoutes(admin gin.IRoutes) {
+	admin.GET("/kyc", server.listKYC)
+	admin.PATCH("/kyc/:id/verify", server.verifyKYC)
+	admin.PATCH("/kyc/:id/reject", server.rejectKYC)
+}
+
+func (server *Server) registerPublicCurrencyRoutes(router gin.IRoutes) {
 	router.GET("/currencies", server.listActiveCurrencies)
 	router.GET("/currencies/:code", server.getCurrencyByCode)
+}
 
-	// Admin
-	admin := router.Group("/admin/currencies")
-	admin.GET("", server.listAllCurrencies)
-	admin.PATCH("/:code", server.setCurrencyActive)
+func (server *Server) registerAdminCurrencyRoutes(admin gin.IRoutes) {
+	admin.GET("/currencies", server.listAllCurrencies)
+	admin.PATCH("/currencies/:code", server.setCurrencyActive)
 }
 
 func (server *Server) Start(address string) error {
