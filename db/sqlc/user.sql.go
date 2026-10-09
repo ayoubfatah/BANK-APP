@@ -272,7 +272,8 @@ const updateUserPassword = `-- name: UpdateUserPassword :exec
 UPDATE users
 SET
     password_hash = $2,
-    updated_at = now()
+    updated_at = now(),
+    password_changed_at = now()
 WHERE id = $1
 `
 

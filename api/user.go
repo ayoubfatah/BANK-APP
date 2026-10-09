@@ -246,6 +246,7 @@ func (server *Server) updateUserPassword(ctx *gin.Context) {
 		return
 	}
 
+
 	// TODO REVOKE REFRESHTOKENS ALL OF THEM
 	ctx.Status(http.StatusNoContent)
 }
