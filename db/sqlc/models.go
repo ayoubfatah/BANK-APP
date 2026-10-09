@@ -278,7 +278,8 @@ type User struct {
 	Phone        pgtype.Text `json:"phone"`
 	PasswordHash string      `json:"password_hash"`
 	// active, suspended, closed
-	Status    string             `json:"status"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	Status            string             `json:"status"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	PasswordChangedAt pgtype.Timestamptz `json:"password_changed_at"`
 }

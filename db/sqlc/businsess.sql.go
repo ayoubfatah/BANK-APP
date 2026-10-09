@@ -94,7 +94,7 @@ func (q *Queries) ListBusinessesByOwnerID(ctx context.Context, ownerID int64) ([
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Business
+	items := []Business{}
 	for rows.Next() {
 		var i Business
 		if err := rows.Scan(

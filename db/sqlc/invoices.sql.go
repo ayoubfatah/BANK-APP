@@ -183,7 +183,7 @@ func (q *Queries) ListInvoicesByBusinessID(ctx context.Context, arg ListInvoices
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Invoice
+	items := []Invoice{}
 	for rows.Next() {
 		var i Invoice
 		if err := rows.Scan(
@@ -224,7 +224,7 @@ func (q *Queries) MarkInvoiceAsOverdue(ctx context.Context) ([]Invoice, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Invoice
+	items := []Invoice{}
 	for rows.Next() {
 		var i Invoice
 		if err := rows.Scan(

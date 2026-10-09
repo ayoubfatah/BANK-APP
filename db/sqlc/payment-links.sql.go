@@ -138,7 +138,7 @@ func (q *Queries) ListPaymentLinksByBusinessID(ctx context.Context, businessID i
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PaymentLink
+	items := []PaymentLink{}
 	for rows.Next() {
 		var i PaymentLink
 		if err := rows.Scan(

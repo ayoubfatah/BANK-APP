@@ -72,7 +72,7 @@ func (q *Queries) ListBusinessMembers(ctx context.Context, businessID int64) ([]
 		return nil, err
 	}
 	defer rows.Close()
-	var items []BusinessMember
+	items := []BusinessMember{}
 	for rows.Next() {
 		var i BusinessMember
 		if err := rows.Scan(

@@ -100,7 +100,7 @@ func (q *Queries) ListIncomingPaymentsByAccountID(ctx context.Context, accountID
 		return nil, err
 	}
 	defer rows.Close()
-	var items []IncomingPayment
+	items := []IncomingPayment{}
 	for rows.Next() {
 		var i IncomingPayment
 		if err := rows.Scan(

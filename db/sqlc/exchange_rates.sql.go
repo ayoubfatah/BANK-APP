@@ -102,7 +102,7 @@ func (q *Queries) ListExchangeRates(ctx context.Context, arg ListExchangeRatesPa
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ExchangeRate
+	items := []ExchangeRate{}
 	for rows.Next() {
 		var i ExchangeRate
 		if err := rows.Scan(

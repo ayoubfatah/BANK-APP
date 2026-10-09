@@ -100,7 +100,7 @@ func (q *Queries) ListCardsByAccountID(ctx context.Context, accountID int64) ([]
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Card
+	items := []Card{}
 	for rows.Next() {
 		var i Card
 		if err := rows.Scan(
@@ -137,7 +137,7 @@ func (q *Queries) ListCardsByUserID(ctx context.Context, userID int64) ([]Card, 
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Card
+	items := []Card{}
 	for rows.Next() {
 		var i Card
 		if err := rows.Scan(

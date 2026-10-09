@@ -86,7 +86,7 @@ func (q *Queries) GetTransferFees(ctx context.Context, transferID pgtype.Int8) (
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Fee
+	items := []Fee{}
 	for rows.Next() {
 		var i Fee
 		if err := rows.Scan(
@@ -133,7 +133,7 @@ func (q *Queries) ListFeesByTransferID(ctx context.Context, transferID pgtype.In
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Fee
+	items := []Fee{}
 	for rows.Next() {
 		var i Fee
 		if err := rows.Scan(

@@ -127,7 +127,7 @@ func (q *Queries) ListBeneficiariesByUserID(ctx context.Context, userID int64) (
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Beneficiary
+	items := []Beneficiary{}
 	for rows.Next() {
 		var i Beneficiary
 		if err := rows.Scan(

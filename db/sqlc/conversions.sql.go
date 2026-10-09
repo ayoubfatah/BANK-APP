@@ -179,7 +179,7 @@ func (q *Queries) ListConversionsByUserID(ctx context.Context, arg ListConversio
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Conversion
+	items := []Conversion{}
 	for rows.Next() {
 		var i Conversion
 		if err := rows.Scan(

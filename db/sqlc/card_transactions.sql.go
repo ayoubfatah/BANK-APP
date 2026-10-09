@@ -110,7 +110,7 @@ func (q *Queries) ExpireOldAuthorizations(ctx context.Context, maxAge pgtype.Int
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CardTransaction
+	items := []CardTransaction{}
 	for rows.Next() {
 		var i CardTransaction
 		if err := rows.Scan(
@@ -238,7 +238,7 @@ func (q *Queries) ListCardTransactionsByAccount(ctx context.Context, arg ListCar
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CardTransaction
+	items := []CardTransaction{}
 	for rows.Next() {
 		var i CardTransaction
 		if err := rows.Scan(

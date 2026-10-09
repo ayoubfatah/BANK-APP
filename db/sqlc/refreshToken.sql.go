@@ -83,7 +83,7 @@ func (q *Queries) ListRefreshTokensByUserID(ctx context.Context, userID int64) (
 		return nil, err
 	}
 	defer rows.Close()
-	var items []RefreshToken
+	items := []RefreshToken{}
 	for rows.Next() {
 		var i RefreshToken
 		if err := rows.Scan(

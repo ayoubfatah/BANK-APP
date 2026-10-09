@@ -92,7 +92,7 @@ func (q *Queries) GetEntriesByReferenceID(ctx context.Context, referenceID pgtyp
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Entry
+	items := []Entry{}
 	for rows.Next() {
 		var i Entry
 		if err := rows.Scan(
@@ -151,7 +151,7 @@ func (q *Queries) ListEntriesByAccountID(ctx context.Context, accountID int64) (
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Entry
+	items := []Entry{}
 	for rows.Next() {
 		var i Entry
 		if err := rows.Scan(
@@ -195,7 +195,7 @@ func (q *Queries) ListEntriesByAccountIDWithPagination(ctx context.Context, arg 
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Entry
+	items := []Entry{}
 	for rows.Next() {
 		var i Entry
 		if err := rows.Scan(

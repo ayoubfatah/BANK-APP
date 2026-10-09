@@ -104,7 +104,7 @@ func (q *Queries) ListCurrencies(ctx context.Context, arg ListCurrenciesParams) 
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Currency
+	items := []Currency{}
 	for rows.Next() {
 		var i Currency
 		if err := rows.Scan(

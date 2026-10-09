@@ -17,7 +17,7 @@ SET
     status = 'closed',
     updated_at = now()
 WHERE id = $1 
-RETURNING id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at
+RETURNING id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at, password_changed_at
 `
 
 func (q *Queries) CloseUserAccount(ctx context.Context, id int64) (User, error) {
@@ -35,6 +35,7 @@ func (q *Queries) CloseUserAccount(ctx context.Context, id int64) (User, error) 
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PasswordChangedAt,
 	)
 	return i, err
 }
@@ -45,7 +46,7 @@ INSERT INTO users (
 ) VALUES (
   $1, $2, $3 ,$4 ,$5 ,$6 , $7 
 )
-RETURNING id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at
+RETURNING id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at, password_changed_at
 `
 
 type CreateUserParams struct {
@@ -81,6 +82,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PasswordChangedAt,
 	)
 	return i, err
 }
@@ -95,7 +97,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at FROM users 
+SELECT id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at, password_changed_at FROM users 
 ORDER BY id
 LIMIT $1
 OFFSET $2
@@ -112,7 +114,7 @@ func (q *Queries) GetAllUsers(ctx context.Context, arg GetAllUsersParams) ([]Use
 		return nil, err
 	}
 	defer rows.Close()
-	var items []User
+	items := []User{}
 	for rows.Next() {
 		var i User
 		if err := rows.Scan(
@@ -127,6 +129,7 @@ func (q *Queries) GetAllUsers(ctx context.Context, arg GetAllUsersParams) ([]Use
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PasswordChangedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -139,7 +142,7 @@ func (q *Queries) GetAllUsers(ctx context.Context, arg GetAllUsersParams) ([]Use
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at FROM users 
+SELECT id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at, password_changed_at FROM users 
 WHERE id = $1 LIMIT 1
 `
 
@@ -158,12 +161,13 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PasswordChangedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
- SELECT id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at FROM users 
+ SELECT id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at, password_changed_at FROM users 
 WHERE email = $1 LIMIT 1
 `
 
@@ -182,6 +186,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PasswordChangedAt,
 	)
 	return i, err
 }
@@ -194,7 +199,7 @@ SET
     img = $4,
     updated_at = now()
 WHERE id = $1
-RETURNING id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at
+RETURNING id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at, password_changed_at
 `
 
 type UpdateUserParams struct {
@@ -224,6 +229,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PasswordChangedAt,
 	)
 	return i, err
 }
@@ -234,7 +240,7 @@ SET
     email = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at
+RETURNING id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at, password_changed_at
 `
 
 type UpdateUserEmailParams struct {
@@ -257,6 +263,7 @@ func (q *Queries) UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PasswordChangedAt,
 	)
 	return i, err
 }
@@ -303,7 +310,7 @@ SET
     status = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at
+RETURNING id, first_name, last_name, email, role, img, phone, password_hash, status, created_at, updated_at, password_changed_at
 `
 
 type UpdateUserStatusParams struct {
@@ -326,6 +333,7 @@ func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusPara
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PasswordChangedAt,
 	)
 	return i, err
 }

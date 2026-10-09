@@ -97,7 +97,7 @@ func (q *Queries) GetKYCVerificationByUserId(ctx context.Context, userID int64) 
 		return nil, err
 	}
 	defer rows.Close()
-	var items []KycVerification
+	items := []KycVerification{}
 	for rows.Next() {
 		var i KycVerification
 		if err := rows.Scan(
@@ -165,7 +165,7 @@ func (q *Queries) ListKYCVerifications(ctx context.Context, arg ListKYCVerificat
 		return nil, err
 	}
 	defer rows.Close()
-	var items []KycVerification
+	items := []KycVerification{}
 	for rows.Next() {
 		var i KycVerification
 		if err := rows.Scan(
