@@ -85,8 +85,24 @@ func (server *Server) SubmitKYC(ctx *gin.Context) {
 		return
 	}
  
-	config, err := utils.LoadConfig(".")
+	config, err := utils.LoadConfig("../../")
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":err.Error(),
+		})
+		return 
+	}
 	enc, err := utils.Encrypt(config.KYCEncryptionKey, req.DocumentNumber)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":err.Error(),
+		})
+		return 
+	}
+	fmt.Println("THIS IS THE ENCRYPTED FILE")
+	fmt.Println(enc)
 
 	k, err := server.store.CreateKYCVerification(ctx, db.CreateKYCVerificationParams{
 		UserID:         userID,
