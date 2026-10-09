@@ -323,27 +323,30 @@ func (server *Server) closeUserAccount(ctx *gin.Context) {
 
 
 func (server *Server) listUsers(ctx *gin.Context) {
+	page, err := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "page must be a number"})
+		return
+	}
+
 	limit, err := strconv.Atoi(ctx.DefaultQuery("limit", "20"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "limit must be a number"})
 		return
 	}
-	offset, err := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "offset must be a number"})
-		return
-	}
 
 	const maxLimit = 100
+	if page < 1 {
+		page = 1
+	}
 	if limit <= 0 {
 		limit = 20
 	}
 	if limit > maxLimit {
 		limit = maxLimit
 	}
-	if offset < 0 {
-		offset = 0
-	}
+
+	offset := (page - 1) * limit
 
 	users, err := server.store.GetAllUsers(ctx, db.GetAllUsersParams{
 		Limit:  int32(limit),
@@ -360,9 +363,9 @@ func (server *Server) listUsers(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"data":   allUsers,
-		"limit":  limit,
-		"offset": offset,
+		"data":  allUsers,
+		"page":  page,
+		"limit": limit,
 	})
 }
 
