@@ -7,34 +7,80 @@ package db
 
 import (
 	"context"
+	"net/netip"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createRefreshToken = `-- name: CreateRefreshToken :one
-INSERT INTO refresh_tokens (
-  user_id ,
-  token_hash,
-  expires_at 
-) VALUES (
-  $1, $2, $3
-)
-RETURNING id, user_id, token_hash, expires_at, revoked_at, created_at
+const blockRefreshToken = `-- name: BlockRefreshToken :one
+UPDATE refresh_tokens
+SET is_blocked = $2
+WHERE id = $1
+RETURNING id, user_id, token_hash, is_blocked, client_ip, user_agent, expires_at, revoked_at, created_at
 `
 
-type CreateRefreshTokenParams struct {
-	UserID    int64              `json:"user_id"`
-	TokenHash string             `json:"token_hash"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+type BlockRefreshTokenParams struct {
+	ID        pgtype.UUID `json:"id"`
+	IsBlocked bool        `json:"is_blocked"`
 }
 
-func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error) {
-	row := q.db.QueryRow(ctx, createRefreshToken, arg.UserID, arg.TokenHash, arg.ExpiresAt)
+func (q *Queries) BlockRefreshToken(ctx context.Context, arg BlockRefreshTokenParams) (RefreshToken, error) {
+	row := q.db.QueryRow(ctx, blockRefreshToken, arg.ID, arg.IsBlocked)
 	var i RefreshToken
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.TokenHash,
+		&i.IsBlocked,
+		&i.ClientIp,
+		&i.UserAgent,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createRefreshToken = `-- name: CreateRefreshToken :one
+INSERT INTO refresh_tokens (
+    id,
+    user_id,
+    token_hash,
+    user_agent,
+    expires_at,
+    client_ip
+) VALUES (
+    $1, $2, $3, $4 ,$5 , $6
+)
+RETURNING id, user_id, token_hash, is_blocked, client_ip, user_agent, expires_at, revoked_at, created_at
+`
+
+type CreateRefreshTokenParams struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    int64              `json:"user_id"`
+	TokenHash string             `json:"token_hash"`
+	UserAgent string             `json:"user_agent"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	ClientIp  netip.Addr         `json:"client_ip"`
+}
+
+func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error) {
+	row := q.db.QueryRow(ctx, createRefreshToken,
+		arg.ID,
+		arg.UserID,
+		arg.TokenHash,
+		arg.UserAgent,
+		arg.ExpiresAt,
+		arg.ClientIp,
+	)
+	var i RefreshToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.IsBlocked,
+		&i.ClientIp,
+		&i.UserAgent,
 		&i.ExpiresAt,
 		&i.RevokedAt,
 		&i.CreatedAt,
@@ -43,8 +89,8 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 }
 
 const deleteExpiredRefreshTokens = `-- name: DeleteExpiredRefreshTokens :exec
-DELETE  FROM refresh_tokens 
-WHERE  expires_at < NOW()
+DELETE FROM refresh_tokens
+WHERE expires_at < NOW()
 `
 
 func (q *Queries) DeleteExpiredRefreshTokens(ctx context.Context) error {
@@ -53,8 +99,10 @@ func (q *Queries) DeleteExpiredRefreshTokens(ctx context.Context) error {
 }
 
 const getRefreshTokenByHash = `-- name: GetRefreshTokenByHash :one
-SELECT id, user_id, token_hash, expires_at, revoked_at, created_at FROM refresh_tokens
-WHERE token_hash = $1 LIMIT 1
+SELECT id, user_id, token_hash, is_blocked, client_ip, user_agent, expires_at, revoked_at, created_at
+FROM refresh_tokens
+WHERE token_hash = $1
+LIMIT 1
 `
 
 func (q *Queries) GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error) {
@@ -64,6 +112,9 @@ func (q *Queries) GetRefreshTokenByHash(ctx context.Context, tokenHash string) (
 		&i.ID,
 		&i.UserID,
 		&i.TokenHash,
+		&i.IsBlocked,
+		&i.ClientIp,
+		&i.UserAgent,
 		&i.ExpiresAt,
 		&i.RevokedAt,
 		&i.CreatedAt,
@@ -72,8 +123,9 @@ func (q *Queries) GetRefreshTokenByHash(ctx context.Context, tokenHash string) (
 }
 
 const listRefreshTokensByUserID = `-- name: ListRefreshTokensByUserID :many
-SELECT id, user_id, token_hash, expires_at, revoked_at, created_at FROM refresh_tokens 
-WHERE user_id = $1 
+SELECT id, user_id, token_hash, is_blocked, client_ip, user_agent, expires_at, revoked_at, created_at
+FROM refresh_tokens
+WHERE user_id = $1
 ORDER BY created_at DESC
 `
 
@@ -90,6 +142,9 @@ func (q *Queries) ListRefreshTokensByUserID(ctx context.Context, userID int64) (
 			&i.ID,
 			&i.UserID,
 			&i.TokenHash,
+			&i.IsBlocked,
+			&i.ClientIp,
+			&i.UserAgent,
 			&i.ExpiresAt,
 			&i.RevokedAt,
 			&i.CreatedAt,
@@ -105,10 +160,11 @@ func (q *Queries) ListRefreshTokensByUserID(ctx context.Context, userID int64) (
 }
 
 const revokeRefreshToken = `-- name: RevokeRefreshToken :one
-UPDATE  refresh_tokens
+UPDATE refresh_tokens
 SET revoked_at = NOW()
 WHERE token_hash = $1
-RETURNING id, user_id, token_hash, expires_at, revoked_at, created_at
+  AND revoked_at IS NULL
+RETURNING id, user_id, token_hash, is_blocked, client_ip, user_agent, expires_at, revoked_at, created_at
 `
 
 func (q *Queries) RevokeRefreshToken(ctx context.Context, tokenHash string) (RefreshToken, error) {
@@ -118,6 +174,9 @@ func (q *Queries) RevokeRefreshToken(ctx context.Context, tokenHash string) (Ref
 		&i.ID,
 		&i.UserID,
 		&i.TokenHash,
+		&i.IsBlocked,
+		&i.ClientIp,
+		&i.UserAgent,
 		&i.ExpiresAt,
 		&i.RevokedAt,
 		&i.CreatedAt,

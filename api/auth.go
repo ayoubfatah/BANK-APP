@@ -3,11 +3,15 @@ package api
 import (
 	"errors"
 	"net/http"
+	"net/netip"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
+	db "github.com/bank-app/db/sqlc"
 	"github.com/bank-app/utils"
 )
 
@@ -17,8 +21,11 @@ type loginUserRequest struct {
 }
 
 type loginUserResponse struct {
+	SessionID  uuid.UUID `json:"session_id"`
 	AccessToken          string      `json:"access_token"`
+	RefreshToken          string      `json:"refresh_token"`
 	AccessTokenExpiresAt time.Time   `json:"access_token_expires_at"`
+	RefreshTokenExpiresAt time.Time   `json:"refresh_token_expires_at"`
 	User                 userResponse `json:"user"`
 }
 
@@ -55,7 +62,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		return
 	}
 
-	accessToken , err := server.tokenMaker.CreateToken(
+	accessToken , accessPayload , err := server.tokenMaker.CreateToken(
 		user.Email,
 		user.ID,
 		user.Role,
@@ -66,10 +73,46 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
+	refreshToken, refreshPayload , err := server.tokenMaker.CreateToken(
+		user.Email,
+		user.ID,
+		user.Role,
+		server.config.RefreshTokenDuration,
+	)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	userAgent := ctx.GetHeader("User-Agent")
+	clientIP := ctx.ClientIP()
 	
+	_,  err=  server.store.CreateRefreshToken(ctx ,  db.CreateRefreshTokenParams{
+	ID  : pgtype.UUID{
+			Bytes: refreshPayload.ID,
+			Valid: true,
+	},
+    UserID : user.ID ,
+    TokenHash: refreshToken ,
+    UserAgent:  userAgent,
+	ClientIp: netip.MustParseAddr(clientIP),
+    ExpiresAt: pgtype.Timestamptz{
+		Time:  refreshPayload.ExpiredAt,
+		Valid: true,
+	} ,
 	
+	 })
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
 	ctx.JSON(http.StatusOK, loginUserResponse{
 		User:                 newUserResponse(user),
 		AccessToken: accessToken,
+		AccessTokenExpiresAt:accessPayload.ExpiredAt ,
+		RefreshToken: refreshToken,
+		RefreshTokenExpiresAt :refreshPayload.ExpiredAt , 
+
 	})
 }

@@ -24,20 +24,17 @@ CREATE TABLE "users" (
 
 );
 
-CREATE TABLE "refresh_tokens" (
 
-  "id" bigserial PRIMARY KEY,
-
-  "user_id" bigint NOT NULL,
-
-  "token_hash" varchar UNIQUE NOT NULL,
-
-  "expires_at" timestamptz NOT NULL,
-
-  "revoked_at" timestamptz,
-
-  "created_at" timestamptz NOT NULL DEFAULT (now())
-
+CREATE TABLE refresh_tokens (
+    id UUID PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash varchar  UNIQUE NOT NULL,
+    is_blocked BOOLEAN NOT NULL DEFAULT FALSE,
+    client_ip INET NOT NULL,
+    user_agent TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE "kyc_verifications" (

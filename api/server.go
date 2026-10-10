@@ -38,6 +38,7 @@ func (server *Server) setupRouter() {
 
 	// Public routes
 	server.registerPublicUserRoutes(router)
+	server.registerPublicTokenRoutes(router)
 	server.registerPublicCurrencyRoutes(router)
 
 	// Authenticated routes
@@ -59,6 +60,9 @@ func (server *Server) setupRouter() {
 	server.router = router
 }
 
+func (server *Server) registerPublicTokenRoutes(router gin.IRoutes) {
+	router.POST("/tokens/renew_access", server.renewAccessToken)
+}
 func (server *Server) registerPublicUserRoutes(router gin.IRoutes) {
 	router.POST("/users", server.createUser)
 	router.POST("/users/login", server.loginUser)

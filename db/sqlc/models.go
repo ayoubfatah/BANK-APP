@@ -5,6 +5,8 @@
 package db
 
 import (
+	"net/netip"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -228,9 +230,12 @@ type PaymentLink struct {
 }
 
 type RefreshToken struct {
-	ID        int64              `json:"id"`
+	ID        pgtype.UUID        `json:"id"`
 	UserID    int64              `json:"user_id"`
 	TokenHash string             `json:"token_hash"`
+	IsBlocked bool               `json:"is_blocked"`
+	ClientIp  netip.Addr         `json:"client_ip"`
+	UserAgent string             `json:"user_agent"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`

@@ -32,7 +32,7 @@ func createTestToken(
 ) string {
 	t.Helper()
 
-	tokenString, err := maker.CreateToken(
+	tokenString, _,err := maker.CreateToken(
 		"test@example.com",
 		1,
 		role,

@@ -53,7 +53,7 @@ func TestCreateToken(t *testing.T) {
 	email := "ayoub@example.com"
 	duration := time.Minute
 
-	token, err := maker.CreateToken(email, 1 , "customer" , duration)
+	token, _,err := maker.CreateToken(email, 1 , "customer" , duration)
 
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
@@ -79,7 +79,7 @@ func TestVerifyToken(t *testing.T) {
 		{
 			name: "valid token",
 			tokenFunc: func() string {
-				token, err := maker.CreateToken("ayoub@example.com",1 , "customer" ,time.Minute)
+				token,_, err := maker.CreateToken("ayoub@example.com",1 , "customer" ,time.Minute)
 				require.NoError(t, err)
 				return token
 			},
@@ -88,7 +88,7 @@ func TestVerifyToken(t *testing.T) {
 		{
 			name: "expired token",
 			tokenFunc: func() string {
-				token, err := maker.CreateToken("ayoub@example.com",1 , "customer" , -time.Minute)
+				token,_, err := maker.CreateToken("ayoub@example.com",1 , "customer" , -time.Minute)
 				require.NoError(t, err)
 				return token
 			},
@@ -134,7 +134,7 @@ func TestVerifyTokenWrongKey(t *testing.T) {
 	maker2, err := NewPasetoMaker("abcdefghijklmnopqrstuvwxyz123456")
 	require.NoError(t, err)
 
-	token, err := maker1.CreateToken("ayoub@example.com", 1 , "admin" , time.Minute)
+	token,_, err := maker1.CreateToken("ayoub@example.com", 1 , "admin" , time.Minute)
 	require.NoError(t, err)
 
 	payload, err := maker2.VerifyToken(token)
@@ -147,7 +147,7 @@ func TestVerifyTokenTampered(t *testing.T) {
 	maker, err := NewPasetoMaker("12345678901234567890123456789012")
 	require.NoError(t, err)
 
-	token, err := maker.CreateToken("ayoub@example.com", 2 , "admin" , time.Minute)
+	token,_, err := maker.CreateToken("ayoub@example.com", 2 , "admin" , time.Minute)
 
 	require.NoError(t, err)
 
