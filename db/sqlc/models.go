@@ -44,6 +44,15 @@ type AuditLog struct {
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
+type BankingPartner struct {
+	ID           int64  `json:"id"`
+	CurrencyCode string `json:"currency_code"`
+	CountryCode  string `json:"country_code"`
+	ProviderName string `json:"provider_name"`
+	IsActive     bool   `json:"is_active"`
+	DetailType   string `json:"detail_type"`
+}
+
 type Beneficiary struct {
 	ID            int64              `json:"id"`
 	UserID        int64              `json:"user_id"`
