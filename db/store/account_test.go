@@ -75,7 +75,7 @@ func TestCreateAccountTx(t *testing.T) {
 			partner := getActivePartner(t, store, tc.currency, tc.country)
 
 			result, err := store.CreateAccountTx(ctx, CreateAccountTxArguments{
-				User:             user,
+				UserID:             user.ID,
 				CurrencyCode:     tc.currency,
 				BankingPartnerID: partner.ID,
 				Balance:          0,
@@ -116,7 +116,7 @@ func TestCreateAccountTx_InvalidCurrency(t *testing.T) {
 	partner := getActivePartner(t, store, "EUR", "DE")
 
 	_, err := store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
-		User:             user,
+		UserID:             user.ID,
 		CurrencyCode:     "ZZZ",
 		BankingPartnerID: partner.ID,
 	})
@@ -129,7 +129,7 @@ func TestCreateAccountTx_PartnerNotFound(t *testing.T) {
 	user := createNewUser(t)
 
 	_, err := store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
-		User:             user,
+		UserID:             user.ID,
 		CurrencyCode:     "EUR",
 		BankingPartnerID: 999999999,
 	})
@@ -144,14 +144,14 @@ func TestCreateAccountTx_DuplicateCurrency(t *testing.T) {
 	fr := getActivePartner(t, store, "EUR", "FR")
 
 	first, err := store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
-		User: user, CurrencyCode: "EUR", BankingPartnerID: de.ID,
+		UserID: user.ID, CurrencyCode: "EUR", BankingPartnerID: de.ID,
 	})
 	require.NoError(t, err)
 
 	// UNIQUE (user_id, currency) must reject a second EUR account,
 	// even through a different partner
 	_, err = store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
-		User: user, CurrencyCode: "EUR", BankingPartnerID: fr.ID,
+		UserID: user.ID, CurrencyCode: "EUR", BankingPartnerID: fr.ID,
 	})
 	require.Error(t, err)
 

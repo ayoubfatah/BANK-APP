@@ -8,18 +8,16 @@ import (
 
 	db "github.com/bank-app/db/sqlc"
 	"github.com/bank-app/utils"
-
 	"github.com/gin-gonic/gin"
 )
-
 
 type createUserRequest struct {
 	FirstName string `json:"first_name" binding:"required"`
 	LastName  string `json:"last_name" binding:"required"`
 	Email     string `json:"email" binding:"required,email"`
-	Img string `json:"img" binding:"omitempty,url"`
+	Img       string `json:"img" binding:"omitempty,url"`
 	Phone     string `json:"phone"`
-	Password string `json:"password" binding:"required,min=8,max=72"`
+	Password  string `json:"password" binding:"required,min=8,max=72"`
 }
 
 type updateUserRequest struct {
@@ -27,8 +25,9 @@ type updateUserRequest struct {
 	LastName  *string `json:"last_name"`
 	Img       *string `json:"img" binding:"omitempty,url"`
 }
+
 type updateEmailRequest struct {
-	Email string `json:"email" binding:"required,email"`
+	Email           string `json:"email" binding:"required,email"`
 	CurrentPassword string `json:"current_password" binding:"required"`
 }
 
@@ -41,36 +40,31 @@ type updatePhoneRequest struct {
 	Phone string `json:"phone"`
 }
 
-type updateStatusRequest struct {
-	Status string `json:"status" binding:"required,oneof=active suspended closed"`
-}
-
-
 type userResponse struct {
-	ID        int64   `json:"id"`
-	FirstName string  `json:"first_name"`
-	LastName  string  `json:"last_name"`
-	Email     string  `json:"email"`
-	Role      string  `json:"role"`
-	Img       *string `json:"img"`
-	Phone     *string `json:"phone"`
-	Status       string `json:"status"`
+	ID        int64     `json:"id"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	Img       *string   `json:"img"`
+	Phone     *string   `json:"phone"`
+	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func newUserResponse(user db.User) userResponse {
 	return userResponse{
-		ID:           user.ID,
-		FirstName:    user.FirstName,
-		LastName:     user.LastName,
-		Email:        user.Email,
-		Role:         user.Role,
-		Img:          ptrText(user.Img),
-		Phone:        ptrText(user.Phone),
-		Status:       user.Status,
-		CreatedAt:   user.CreatedAt.Time,
-		UpdatedAt:    user.UpdatedAt.Time,
+		ID:        user.ID,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		Role:      user.Role,
+		Img:       ptrText(user.Img),
+		Phone:     ptrText(user.Phone),
+		Status:    user.Status,
+		CreatedAt: user.CreatedAt.Time,
+		UpdatedAt: user.UpdatedAt.Time,
 	}
 }
 
@@ -84,11 +78,9 @@ func (server *Server) createUser(ctx *gin.Context) {
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-	ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-	return
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
 	}
-	
-
 
 	user, err := server.store.CreateUser(ctx, db.CreateUserParams{
 		FirstName:    req.FirstName,
@@ -99,7 +91,6 @@ func (server *Server) createUser(ctx *gin.Context) {
 		PasswordHash: hashedPassword,
 		Status:       "active",
 	})
-
 	if err != nil {
 		handleDBError(ctx, err)
 		return
@@ -109,34 +100,35 @@ func (server *Server) createUser(ctx *gin.Context) {
 }
 
 func (server *Server) getUser(ctx *gin.Context) {
-	// todo add real id that u get from token 
-		userId :=1
-	user, err := server.store.GetUser(ctx, int64(userId))
+	payload := getAuthPayload(ctx)
+
+	user, err := server.store.GetUser(ctx, payload.UserID)
 	if err != nil {
 		handleDBError(ctx, err)
 		return
 	}
+
 	ctx.JSON(http.StatusOK, newUserResponse(user))
 }
 
-
 func (server *Server) updateUser(ctx *gin.Context) {
-	// TODO: id from the token
-	userId := 1
+	payload := getAuthPayload(ctx)
 
 	var req updateUserRequest
-
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	
-	current, err := server.store.GetUser(ctx, int64(userId))
+
+	current, err := server.store.GetUser(ctx, payload.UserID)
 	if err != nil {
 		handleDBError(ctx, err)
 		return
 	}
-	firstName, lastName, img := current.FirstName, current.LastName, current.Img
+
+	firstName := current.FirstName
+	lastName := current.LastName
+	img := current.Img
 
 	if req.FirstName != nil {
 		firstName = *req.FirstName
@@ -145,16 +137,15 @@ func (server *Server) updateUser(ctx *gin.Context) {
 		lastName = *req.LastName
 	}
 	if req.Img != nil {
-		img = textOrNull(*req.Img) 
+		img = textOrNull(*req.Img)
 	}
 
 	user, err := server.store.UpdateUser(ctx, db.UpdateUserParams{
-		ID:int64(userId),
-		FirstName :  firstName,
+		ID:        payload.UserID,
+		FirstName: firstName,
 		LastName:  lastName,
 		Img:       img,
-	},)
-
+	})
 	if err != nil {
 		handleDBError(ctx, err)
 		return
@@ -163,47 +154,42 @@ func (server *Server) updateUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, newUserResponse(user))
 }
 
-
-
-
 func (server *Server) updateUserEmail(ctx *gin.Context) {
-
-	// TODO: id from the token
-	userId := 1
+	payload := getAuthPayload(ctx)
 
 	var req updateEmailRequest
-
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
-	user , err := server.store.GetUser(ctx , int64(userId))
+	user, err := server.store.GetUser(ctx, payload.UserID)
 	if err != nil {
 		handleDBError(ctx, err)
 		return
 	}
 
 	if !utils.CheckPasswordHash(req.CurrentPassword, user.PasswordHash) {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "current password is incorrect"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "current password is incorrect",
+		})
 		return
 	}
-	UpdatedUser, err := server.store.UpdateUserEmail(ctx, db.UpdateUserEmailParams{
-		ID:    user.ID,
+
+	updatedUser, err := server.store.UpdateUserEmail(ctx, db.UpdateUserEmailParams{
+		ID:    payload.UserID,
 		Email: req.Email,
 	})
-
 	if err != nil {
 		handleDBError(ctx, err)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, newUserResponse(UpdatedUser))
+	ctx.JSON(http.StatusOK, newUserResponse(updatedUser))
 }
 
 func (server *Server) updateUserPassword(ctx *gin.Context) {
-	// TODO: userID from the token
-	userID := int64(1)
+	payload := getAuthPayload(ctx)
 
 	var req updatePasswordRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -211,13 +197,16 @@ func (server *Server) updateUserPassword(ctx *gin.Context) {
 		return
 	}
 
-	user, err := server.store.GetUser(ctx, userID)
+	user, err := server.store.GetUser(ctx, payload.UserID)
 	if err != nil {
 		handleDBError(ctx, err)
 		return
 	}
+
 	if !utils.CheckPasswordHash(req.CurrentPassword, user.PasswordHash) {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "current password is incorrect"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "current password is incorrect",
+		})
 		return
 	}
 
@@ -226,34 +215,33 @@ func (server *Server) updateUserPassword(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	if err := server.store.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
-		ID:           userID,
-		PasswordHash: string(hash),
-	}); err != nil {
+
+	err = server.store.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{
+		ID:           payload.UserID,
+		PasswordHash: hash,
+	})
+	if err != nil {
 		handleDBError(ctx, err)
 		return
 	}
 
-
-	// TODO REVOKE REFRESHTOKENS ALL OF THEM
+	// TODO: Revoke all refresh tokens for this user.
 	ctx.Status(http.StatusNoContent)
 }
 
 func (server *Server) updateUserPhone(ctx *gin.Context) {
-	// TODO: id from the token
-	userId := 1
-	var req updatePhoneRequest
+	payload := getAuthPayload(ctx)
 
+	var req updatePhoneRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
 	err := server.store.UpdateUserPhone(ctx, db.UpdateUserPhoneParams{
-		ID:    int64(userId),
+		ID:    payload.UserID,
 		Phone: textOrNull(req.Phone),
 	})
-
 	if err != nil {
 		handleDBError(ctx, err)
 		return
@@ -262,14 +250,13 @@ func (server *Server) updateUserPhone(ctx *gin.Context) {
 	ctx.Status(http.StatusNoContent)
 }
 
-
-
 type closeAccountRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
 func (server *Server) closeUserAccount(ctx *gin.Context) {
-	userID := int64(1)
+	payload := getAuthPayload(ctx)
+	userID := payload.UserID
 
 	var req closeAccountRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -282,34 +269,38 @@ func (server *Server) closeUserAccount(ctx *gin.Context) {
 		handleDBError(ctx, err)
 		return
 	}
+
 	if !utils.CheckPasswordHash(req.Password, user.PasswordHash) {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "password is incorrect"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "password is incorrect",
+		})
 		return
 	}
 
 	if !server.requireZeroBalances(ctx, userID) {
-	return
+		return
 	}
 
-
-	closedAcc, err := server.store.CloseUserAccount(ctx, userID)
+	closedUser, err := server.store.CloseUserAccount(ctx, userID)
 	if err != nil {
 		handleDBError(ctx, err)
 		return
 	}
-	if closedAcc.Status != "closed" {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(errors.New("failed to close user account")))
+
+	if closedUser.Status != "closed" {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(
+			errors.New("failed to close user account"),
+		))
 		return
 	}
 
-	// TODO: revoke ALL refresh tokens
-
-	ctx.JSON(http.StatusOK, gin.H{"message": "Account closed successfully"})
+	// TODO: Revoke all refresh tokens for this user.
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "Account closed successfully",
+	})
 }
 
-
 // ADMIN
-
 
 func (server *Server) listUsers(ctx *gin.Context) {
 	page, err := strconv.Atoi(ctx.DefaultQuery("page", "1"))
@@ -325,6 +316,7 @@ func (server *Server) listUsers(ctx *gin.Context) {
 	}
 
 	const maxLimit = 100
+
 	if page < 1 {
 		page = 1
 	}
@@ -347,8 +339,8 @@ func (server *Server) listUsers(ctx *gin.Context) {
 	}
 
 	allUsers := make([]userResponse, 0, len(users))
-	for _, u := range users {
-		allUsers = append(allUsers, newUserResponse(u))
+	for _, user := range users {
+		allUsers = append(allUsers, newUserResponse(user))
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
@@ -358,22 +350,23 @@ func (server *Server) listUsers(ctx *gin.Context) {
 	})
 }
 
-
 func (server *Server) getUserByAdmin(ctx *gin.Context) {
 	id, ok := parseID(ctx)
 	if !ok {
 		return
 	}
+
 	user, err := server.store.GetUser(ctx, id)
 	if err != nil {
 		handleDBError(ctx, err)
 		return
 	}
+
 	ctx.JSON(http.StatusOK, newUserResponse(user))
 }
 
 type setUserStatusReq struct {
-Status string `json:"status" binding:"required,oneof=active suspended closed"`
+	Status string `json:"status" binding:"required,oneof=active suspended closed"`
 }
 
 func (server *Server) setUserStatus(ctx *gin.Context) {
@@ -381,10 +374,13 @@ func (server *Server) setUserStatus(ctx *gin.Context) {
 	if !ok {
 		return
 	}
-	// todo add real current id 
-	currentId := 1
-	if id ==  int64(currentId) { // admin's own id
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "you cannot change your own status"})
+
+	payload := getAuthPayload(ctx)
+
+	if id == payload.UserID {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "you cannot change your own status",
+		})
 		return
 	}
 
@@ -393,9 +389,11 @@ func (server *Server) setUserStatus(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
+
 	if req.Status == "closed" && !server.requireZeroBalances(ctx, id) {
-	return
+		return
 	}
+
 	user, err := server.store.UpdateUserStatus(ctx, db.UpdateUserStatusParams{
 		ID:     id,
 		Status: req.Status,
@@ -405,29 +403,28 @@ func (server *Server) setUserStatus(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: if req.Status != "active", revoke that user's refresh tokens
-
+	// TODO: Revoke this user's refresh tokens when suspended or closed.
 	ctx.JSON(http.StatusOK, newUserResponse(user))
 }
 
 func (server *Server) closeUserAccountByAdmin(ctx *gin.Context) {
-
-	// TODO: refuse if this id is the admin's own id; revoke that user's refresh tokens
 	id, ok := parseID(ctx)
 	if !ok {
 		return
 	}
 
-	// todo add real current id 
-	currentId := 1
-	if id ==  int64(currentId) { // admin's own id
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "you cannot close  your own account "})
+	payload := getAuthPayload(ctx)
+
+	if id == payload.UserID {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "you cannot close your own account",
+		})
 		return
 	}
 
 	if !server.requireZeroBalances(ctx, id) {
-	return
-}
+		return
+	}
 
 	_, err := server.store.CloseUserAccount(ctx, id)
 	if err != nil {
@@ -435,6 +432,7 @@ func (server *Server) closeUserAccountByAdmin(ctx *gin.Context) {
 		return
 	}
 
+	// TODO: Revoke all refresh tokens belonging to this user.
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "Account closed successfully",
 	})
@@ -446,11 +444,15 @@ func (server *Server) requireZeroBalances(ctx *gin.Context, userID int64) bool {
 		handleDBError(ctx, err)
 		return false
 	}
-	for _, a := range accounts {
-		if a.Balance != 0 {
-			ctx.JSON(http.StatusConflict, gin.H{"error": "user still has funds; move or withdraw them first"})
+
+	for _, account := range accounts {
+		if account.Balance != 0 {
+			ctx.JSON(http.StatusConflict, gin.H{
+				"error": "user still has funds; move or withdraw them first",
+			})
 			return false
 		}
 	}
+
 	return true
 }

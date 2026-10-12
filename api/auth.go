@@ -108,6 +108,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, loginUserResponse{
+		SessionID: refreshPayload.ID,
 		User:                 newUserResponse(user),
 		AccessToken: accessToken,
 		AccessTokenExpiresAt:accessPayload.ExpiredAt ,
@@ -116,3 +117,58 @@ func (server *Server) loginUser(ctx *gin.Context) {
 
 	})
 }
+
+
+type logoutRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+func (server *Server) logoutUser(ctx *gin.Context) {
+	payload := getAuthPayload(ctx)
+
+	var req logoutRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	tokenHash := req.RefreshToken
+
+	session, err := server.store.GetRefreshTokenByHash(ctx, tokenHash)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+
+			ctx.Status(http.StatusNoContent)
+			return
+		}
+
+		handleDBError(ctx, err)
+		return
+	}
+
+	if session.UserID != payload.UserID {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "invalid session",
+		})
+		return
+	}
+
+	if session.RevokedAt.Valid {
+		ctx.Status(http.StatusNoContent)
+		return
+	}
+
+	_, err = server.store.RevokeRefreshToken(ctx, tokenHash)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Another request may already have revoked it.
+			ctx.Status(http.StatusNoContent)
+			return
+		}
+
+		handleDBError(ctx, err)
+		return
+	}
+
+	ctx.Status(http.StatusNoContent)
+}
+

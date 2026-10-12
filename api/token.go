@@ -51,21 +51,25 @@ func (server *Server) renewAccessToken(ctx *gin.Context) {
 
 
 
-	if session.IsBlocked {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"error": "this session is blocked  ",
-		})
-		return
+	if session.IsBlocked || session.RevokedAt.Valid {
+    ctx.JSON(http.StatusUnauthorized, gin.H{
+        "error": "refresh token is no longer valid",
+    })
+    return
 	}
 
 	if session.UserID != refreshPayload.UserID {
-			ctx.JSON(http.StatusInternalServerError, errorResponse(errors.New("Incorrect session user")))
-		return
+    ctx.JSON(http.StatusUnauthorized, gin.H{
+        "error": "invalid session",
+    })
+    return
 	}
 
 	if time.Now().After(session.ExpiresAt.Time) {
-			ctx.JSON(http.StatusInternalServerError, errorResponse(errors.New("expired session")))
-		return
+    ctx.JSON(http.StatusUnauthorized, gin.H{
+        "error": "refresh token has expired",
+    })
+    return
 	}
 
 	accessToken , accessPayload , err := server.tokenMaker.CreateToken(

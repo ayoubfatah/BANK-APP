@@ -47,6 +47,7 @@ func (server *Server) setupRouter() {
 
 	server.registerAuthenticatedUserRoutes(auth)
 	server.registerAuthenticatedKYCRoutes(auth)
+	server.registerAuthenticatedAccountRoutes(auth)
 
 	// Admin routes
 	admin := router.Group("/admin")
@@ -66,6 +67,7 @@ func (server *Server) registerPublicTokenRoutes(router gin.IRoutes) {
 func (server *Server) registerPublicUserRoutes(router gin.IRoutes) {
 	router.POST("/users", server.createUser)
 	router.POST("/users/login", server.loginUser)
+	router.POST("/users/logout", server.logoutUser)
 }
 
 func (server *Server) registerAuthenticatedUserRoutes(router gin.IRoutes) {
@@ -103,6 +105,9 @@ func (server *Server) registerPublicCurrencyRoutes(router gin.IRoutes) {
 func (server *Server) registerAdminCurrencyRoutes(admin gin.IRoutes) {
 	admin.GET("/currencies", server.listAllCurrencies)
 	admin.PATCH("/currencies/:code", server.setCurrencyActive)
+}
+func (server *Server) registerAuthenticatedAccountRoutes(admin gin.IRoutes) {
+	admin.POST("/accounts", server.CreateAccount)
 }
 
 func (server *Server) Start(address string) error {

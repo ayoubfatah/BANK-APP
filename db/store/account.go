@@ -11,7 +11,7 @@ import (
 
 
 type CreateAccountTxArguments struct {
-	User db.User
+	UserID int64
 	CurrencyCode string 
 	BankingPartnerID int64
 	Balance int64
@@ -38,7 +38,7 @@ func (store *Store) CreateAccountTx(ctx context.Context , args CreateAccountTxAr
 	}
 
 	result.Account  , err  =  q.CreateAccount(ctx,db.CreateAccountParams{
-		UserID: args.User.ID,
+		UserID: args.UserID,
 		Currency: args.CurrencyCode,
 		Balance: args.Balance,
 		Status: "active",

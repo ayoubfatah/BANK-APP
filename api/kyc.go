@@ -276,3 +276,4 @@ func (server *Server) audit(ctx *gin.Context, actorID int64, action, entityType 
 		log.Printf("audit log failed: %v", err) 
 	}
 }
+
