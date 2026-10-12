@@ -87,6 +87,8 @@ func (server *Server) createUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 	return
 	}
+	
+
 
 	user, err := server.store.CreateUser(ctx, db.CreateUserParams{
 		FirstName:    req.FirstName,

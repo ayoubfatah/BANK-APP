@@ -20,3 +20,9 @@ ORDER BY provider_name;
 SELECT *
 FROM banking_partners
 ORDER BY currency_code, country_code, provider_name;
+
+
+-- name: GetBankingPartner :one 
+SELECT * 
+FROM banking_partners
+WHERE id = $1 ;

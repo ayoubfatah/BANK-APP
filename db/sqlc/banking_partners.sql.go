@@ -46,6 +46,26 @@ func (q *Queries) CreateBankingPartner(ctx context.Context, arg CreateBankingPar
 	return i, err
 }
 
+const getBankingPartner = `-- name: GetBankingPartner :one
+SELECT id, currency_code, country_code, provider_name, is_active, detail_type 
+FROM banking_partners
+WHERE id = $1
+`
+
+func (q *Queries) GetBankingPartner(ctx context.Context, id int64) (BankingPartner, error) {
+	row := q.db.QueryRow(ctx, getBankingPartner, id)
+	var i BankingPartner
+	err := row.Scan(
+		&i.ID,
+		&i.CurrencyCode,
+		&i.CountryCode,
+		&i.ProviderName,
+		&i.IsActive,
+		&i.DetailType,
+	)
+	return i, err
+}
+
 const getBankingPartnersByCurrencyAndCountry = `-- name: GetBankingPartnersByCurrencyAndCountry :many
 SELECT id, currency_code, country_code, provider_name, is_active, detail_type
 FROM banking_partners

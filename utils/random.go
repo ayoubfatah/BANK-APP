@@ -32,7 +32,7 @@ func RandomString(n int) string {
 
 	return sb.String()
 }
-func RandomNumbers(n int) string {
+func RandomNumbers(n int) (string ){
 	var sb strings.Builder
 
 	k := len(numbers)
@@ -42,7 +42,7 @@ func RandomNumbers(n int) string {
 		sb.WriteByte(c)
 	}
 
-	return sb.String()
+	return sb.String() 
 }
 
 // RandomFirstName generates a random first name.
@@ -79,3 +79,5 @@ func RandomStatus() string {
 
 	return statuses[rand.Intn(len(statuses))]
 }
+
+
