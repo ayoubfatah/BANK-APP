@@ -26,8 +26,8 @@ func createNewCard(t *testing.T) Card {
 		LastFour:  "4242",
 		CardType:  "physical",
 		Status:    "active",
-		ExpiryDate:  pgtype.Date{
-			Time: time.Now().AddDate(3, 0, 0),
+		ExpiryDate: pgtype.Date{
+			Time:  time.Now().AddDate(3, 0, 0),
 			Valid: true,
 		},
 	})
@@ -80,26 +80,26 @@ func TestListCardsByUserID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = testQueries.CreateCard(context.Background(), CreateCardParams{
-		UserID:     user.ID,
-		AccountID:  account.ID,
-		LastFour:   "1111",
-		CardType:   "physical",
-		Status:     "active",
-		ExpiryDate:  pgtype.Date{
-			Time: time.Now().AddDate(3, 0, 0),
+		UserID:    user.ID,
+		AccountID: account.ID,
+		LastFour:  "1111",
+		CardType:  "physical",
+		Status:    "active",
+		ExpiryDate: pgtype.Date{
+			Time:  time.Now().AddDate(3, 0, 0),
 			Valid: true,
 		},
 	})
 	require.NoError(t, err)
 
 	_, err = testQueries.CreateCard(context.Background(), CreateCardParams{
-		UserID:     user.ID,
-		AccountID:  account.ID,
-		LastFour:   "2222",
-		CardType:   "virtual",
-		Status:     "active",
-		ExpiryDate:  pgtype.Date{
-			Time: time.Now().AddDate(3, 0, 0),
+		UserID:    user.ID,
+		AccountID: account.ID,
+		LastFour:  "2222",
+		CardType:  "virtual",
+		Status:    "active",
+		ExpiryDate: pgtype.Date{
+			Time:  time.Now().AddDate(3, 0, 0),
 			Valid: true,
 		},
 	})
@@ -129,26 +129,26 @@ func TestListCardsByAccountID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = testQueries.CreateCard(context.Background(), CreateCardParams{
-		UserID:     user.ID,
-		AccountID:  account.ID,
-		LastFour:   "3333",
-		CardType:   "physical",
-		Status:     "active",
-		ExpiryDate:  pgtype.Date{
-			Time: time.Now().AddDate(3, 0, 0),
+		UserID:    user.ID,
+		AccountID: account.ID,
+		LastFour:  "3333",
+		CardType:  "physical",
+		Status:    "active",
+		ExpiryDate: pgtype.Date{
+			Time:  time.Now().AddDate(3, 0, 0),
 			Valid: true,
 		},
 	})
 	require.NoError(t, err)
 
 	_, err = testQueries.CreateCard(context.Background(), CreateCardParams{
-		UserID:     user.ID,
-		AccountID:  account.ID,
-		LastFour:   "4444",
-		CardType:   "virtual",
-		Status:     "active",
+		UserID:    user.ID,
+		AccountID: account.ID,
+		LastFour:  "4444",
+		CardType:  "virtual",
+		Status:    "active",
 		ExpiryDate: pgtype.Date{
-			Time: time.Now().AddDate(3, 0, 0),
+			Time:  time.Now().AddDate(3, 0, 0),
 			Valid: true,
 		},
 	})

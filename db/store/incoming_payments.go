@@ -66,7 +66,7 @@ func (store *Store) CompleteIncomingPaymentTx(
 		result.IncomingPayment, err = q.UpdateIncomingPaymentStatus(
 			ctx,
 			db.UpdateIncomingPaymentStatusParams{
-				ID:     args.ID,
+				ID:      args.ID,
 				Column2: "completed",
 			},
 		)

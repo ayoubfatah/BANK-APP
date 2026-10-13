@@ -37,31 +37,32 @@ func newCurrencyList(rows []db.Currency) []currencyResponse {
 }
 
 func (server *Server) getCurrencyByCode(ctx *gin.Context) {
-    code := strings.ToUpper(ctx.Param("code"))
+	code := strings.ToUpper(ctx.Param("code"))
 
-    if len(code) != 3 || !isLettersOnly(code) {
-        ctx.JSON(http.StatusBadRequest, gin.H{
-            "error": "currency code must be 3 letters",
-        })
-        return
-    }
+	if len(code) != 3 || !isLettersOnly(code) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "currency code must be 3 letters",
+		})
+		return
+	}
 
-    currency, err := server.store.GetCurrency(ctx, code)
-    if err != nil {
-        handleDBError(ctx, err)
-        return
-    }
+	currency, err := server.store.GetCurrency(ctx, code)
+	if err != nil {
+		handleDBError(ctx, err)
+		return
+	}
 
-    ctx.JSON(http.StatusOK, newCurrencyResponse(currency))
+	ctx.JSON(http.StatusOK, newCurrencyResponse(currency))
 }
 func isLettersOnly(s string) bool {
-    for _, r := range s {
-        if r < 'A' || r > 'Z' {
-            return false
-        }
-    }
-    return true
+	for _, r := range s {
+		if r < 'A' || r > 'Z' {
+			return false
+		}
+	}
+	return true
 }
+
 // ================= GET /currencies (public) =================
 
 func (server *Server) listActiveCurrencies(ctx *gin.Context) {
@@ -76,8 +77,8 @@ func (server *Server) listActiveCurrencies(ctx *gin.Context) {
 // ================= GET /admin/currencies (optional: admins also need to see inactive ones) =================
 
 type listAllCurrenciesQuery struct {
-    Limit int `form:"limit,default=10" binding:"gte=1,max=100"`
-    Page  int `form:"page,default=1" binding:"gte=1"`
+	Limit int `form:"limit,default=10" binding:"gte=1,max=100"`
+	Page  int `form:"page,default=1" binding:"gte=1"`
 }
 
 func (server *Server) listAllCurrencies(ctx *gin.Context) {
@@ -89,9 +90,9 @@ func (server *Server) listAllCurrencies(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	offset := (queries.Page - 1 )* queries.Limit
-	rows, err := server.store.ListCurrencies(ctx ,db.ListCurrenciesParams{
-		Limit: int32(queries.Limit) ,
+	offset := (queries.Page - 1) * queries.Limit
+	rows, err := server.store.ListCurrencies(ctx, db.ListCurrenciesParams{
+		Limit:  int32(queries.Limit),
 		Offset: int32(offset),
 	})
 	if err != nil {
@@ -101,12 +102,10 @@ func (server *Server) listAllCurrencies(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"data": newCurrencyList(rows)})
 }
 
-
-
 type createCurrencyRequest struct {
-	Code   string `json:"code" binding:"required,len=3,alpha"`
-	Name   string `json:"name" binding:"required,max=100"`
-	Symbol string `json:"symbol" binding:"required,max=10"`
+	Code     string `json:"code" binding:"required,len=3,alpha"`
+	Name     string `json:"name" binding:"required,max=100"`
+	Symbol   string `json:"symbol" binding:"required,max=10"`
 	Decimals *int32 `json:"decimals" binding:"required,min=0,max=8"`
 }
 
@@ -131,23 +130,21 @@ func (server *Server) createCurrency(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, newCurrencyResponse(currency))
 }
 
-
-
-// ADMIN 
+// ADMIN
 
 type setCurrencyActiveRequest struct {
-	Code   string `uri:"code" binding:"required"`
-	IsActive *bool `json:"is_active" binding:"required"`
+	Code     string `uri:"code" binding:"required"`
+	IsActive *bool  `json:"is_active" binding:"required"`
 }
 
 func (server *Server) setCurrencyActive(ctx *gin.Context) {
-	 var params setCurrencyActiveRequest
+	var params setCurrencyActiveRequest
 
-	 if err := ctx.ShouldBindUri(&params); err != nil {
-      ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-      return
-    }
-	_, err := server.store.GetCurrency(ctx ,params.Code)
+	if err := ctx.ShouldBindUri(&params); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	_, err := server.store.GetCurrency(ctx, params.Code)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(errors.New("This  currency doesn't exist")))
 

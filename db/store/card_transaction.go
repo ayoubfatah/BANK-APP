@@ -50,7 +50,7 @@ func (store *Store) CaptureCardTransactionTx(ctx context.Context, cardTxnID int6
 		// 2. Log it — this is just a record, does NOT touch balance
 		_, err = q.CreateEntry(ctx, db.CreateEntryParams{
 			AccountID:   cardTxn.AccountID,
-			Amount:      finalAmount, 
+			Amount:      finalAmount,
 			Currency:    cardTxn.Currency,
 			Type:        "card",
 			ReferenceID: pgtype.Int8{Int64: cardTxn.ID, Valid: true},
@@ -61,7 +61,7 @@ func (store *Store) CaptureCardTransactionTx(ctx context.Context, cardTxnID int6
 
 		// 3. THIS is what actually moves the number — separate, explicit call
 		_, err = q.SubtractFromAccountBalance(ctx, db.SubtractFromAccountBalanceParams{
-			ID:     cardTxn.AccountID,
+			ID:      cardTxn.AccountID,
 			Balance: finalAmount,
 		})
 		return err
@@ -70,11 +70,12 @@ func (store *Store) CaptureCardTransactionTx(ctx context.Context, cardTxnID int6
 	return result, err
 }
 
-// TODO :  later on will add notification 
+// TODO :  later on will add notification
 func (store *Store) VoidCardTransaction(ctx context.Context, id int64) (db.CardTransaction, error) {
 	return store.Queries.VoidCardTransaction(ctx, id)
 }
-// TODO :  later on will add notification 
+
+// TODO :  later on will add notification
 func (store *Store) ExpireOldAuthorizations(ctx context.Context, maxAge pgtype.Interval) ([]db.CardTransaction, error) {
 	return store.Queries.ExpireOldAuthorizations(ctx, maxAge)
 }

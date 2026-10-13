@@ -126,7 +126,7 @@ func TestUpdateUser(t *testing.T) {
 		LastName:  "fatah",
 		Img: pgtype.Text{
 			String: "dsfsdfsfsdf",
-			Valid: true,
+			Valid:  true,
 		},
 	}
 
@@ -370,5 +370,3 @@ func TestUpdateUserStatusNotFound(t *testing.T) {
 
 	require.ErrorIs(t, err, sql.ErrNoRows)
 }
-
-

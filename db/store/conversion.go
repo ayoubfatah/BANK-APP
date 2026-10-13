@@ -160,10 +160,10 @@ func (store *Store) CreateConversionTransaction(ctx context.Context, args Create
 		// as part of the debit on the "from" side.
 		fromDescription := fmt.Sprintf("Converted %s to %s", fromAccount.Currency, toAccount.Currency)
 		result.FromEntry, err = q.CreateEntry(ctx, db.CreateEntryParams{
-			AccountID: fromAccount.ID,
-			Amount:    totalDebit,
-			Currency:  fromAccount.Currency,
-			Type:      "conversion",
+			AccountID:   fromAccount.ID,
+			Amount:      totalDebit,
+			Currency:    fromAccount.Currency,
+			Type:        "conversion",
 			ReferenceID: pgtype.Int8{Int64: result.Conversion.ID, Valid: true},
 			Description: pgtype.Text{String: fromDescription, Valid: true},
 		})
@@ -173,10 +173,10 @@ func (store *Store) CreateConversionTransaction(ctx context.Context, args Create
 
 		toDescription := fmt.Sprintf("Converted from %s to %s", fromAccount.Currency, toAccount.Currency)
 		result.ToEntry, err = q.CreateEntry(ctx, db.CreateEntryParams{
-			AccountID: toAccount.ID,
-			Amount:    toAmount,
-			Currency:  toAccount.Currency,
-			Type:      "conversion",
+			AccountID:   toAccount.ID,
+			Amount:      toAmount,
+			Currency:    toAccount.Currency,
+			Type:        "conversion",
 			ReferenceID: pgtype.Int8{Int64: result.Conversion.ID, Valid: true},
 			Description: pgtype.Text{String: toDescription, Valid: true},
 		})

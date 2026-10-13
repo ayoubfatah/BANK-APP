@@ -13,7 +13,7 @@ func createRandomAccountDetail(t *testing.T, accountID int64) AccountDetail {
 	arg := CreateAccountDetailParams{
 		AccountID: accountID,
 		Type:      "IBAN",
-		Value:  "MA"+utils.RandomNumbers(25),
+		Value:     "MA" + utils.RandomNumbers(25),
 		Country: pgtype.Text{
 			String: "MA",
 			Valid:  true,
@@ -45,7 +45,6 @@ func TestCreateAccountDetail(t *testing.T) {
 	require.NotZero(t, detail.ID)
 	require.Equal(t, account.ID, detail.AccountID)
 	require.Equal(t, "IBAN", detail.Type)
-
 
 	require.True(t, detail.Country.Valid)
 	require.Equal(t, "MA", detail.Country.String)
@@ -104,8 +103,6 @@ func TestListAccountDetails(t *testing.T) {
 	detail1 := createRandomAccountDetail(t, account.ID)
 
 	detail2 := createRandomAccountDetail(t, account.ID)
-
-	
 
 	arg := ListAccountDetailsParams{
 		Limit:  10,

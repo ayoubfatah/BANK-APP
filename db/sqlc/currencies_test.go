@@ -9,8 +9,8 @@ import (
 
 // test USD
 func TestCreateUSD(t *testing.T) {
-	currency  ,err:= testQueries.GetCurrency(context.Background(),"USD")
-	require.NoError(t,err)
+	currency, err := testQueries.GetCurrency(context.Background(), "USD")
+	require.NoError(t, err)
 	require.Equal(t, "USD", currency.Code)
 	require.Equal(t, "US Dollar", currency.Name)
 	require.Equal(t, "$", currency.Symbol)
@@ -18,12 +18,11 @@ func TestCreateUSD(t *testing.T) {
 	require.True(t, currency.IsActive)
 }
 
-
 // CREATE EUR
 func TestCreateEUR(t *testing.T) {
 
-	currency  ,err:= testQueries.GetCurrency(context.Background(),"EUR")
-	require.NoError(t,err)
+	currency, err := testQueries.GetCurrency(context.Background(), "EUR")
+	require.NoError(t, err)
 	require.Equal(t, "EUR", currency.Code)
 	require.Equal(t, "Euro", currency.Name)
 	require.Equal(t, "€", currency.Symbol)
@@ -33,8 +32,8 @@ func TestCreateEUR(t *testing.T) {
 
 // GET CURRENCY BY CODE
 func TestGetCurrency(t *testing.T) {
-	currency  ,err:= testQueries.GetCurrency(context.Background(),"GBP")
-	require.NoError(t,err)
+	currency, err := testQueries.GetCurrency(context.Background(), "GBP")
+	require.NoError(t, err)
 	fetched, err := testQueries.GetCurrency(
 		context.Background(),
 		currency.Code,
@@ -60,13 +59,11 @@ func TestGetInvalidCurrency(t *testing.T) {
 	require.Error(t, err)
 }
 
-
-
 // UPDATE CURRENCY
 func TestUpdateCurrency(t *testing.T) {
 
-	_,err:= testQueries.GetCurrency(context.Background(),"GBP")
-	require.NoError(t,err)
+	_, err := testQueries.GetCurrency(context.Background(), "GBP")
+	require.NoError(t, err)
 	updated, err := testQueries.UpdateCurrency(
 		context.Background(),
 		UpdateCurrencyParams{
@@ -87,26 +84,25 @@ func TestUpdateCurrency(t *testing.T) {
 	require.True(t, updated.IsActive)
 }
 
-
 // DEACTIVATE CURRENCY
 func TestDeactivateCurrency(t *testing.T) {
-	currency,err:= testQueries.GetCurrency(context.Background(),"AUD")
-		updated, err := testQueries.UpdateCurrencyActiveState(
+	currency, err := testQueries.GetCurrency(context.Background(), "AUD")
+	updated, err := testQueries.UpdateCurrencyActiveState(
 		context.Background(),
 		UpdateCurrencyActiveStateParams{
-		Code: currency.Code,
-		IsActive: true,
+			Code:     currency.Code,
+			IsActive: true,
 		},
 	)
 
-	require.NoError(t,err)
+	require.NoError(t, err)
 
 	require.True(t, updated.IsActive)
 
 	deactivated, err := testQueries.UpdateCurrencyActiveState(
 		context.Background(),
 		UpdateCurrencyActiveStateParams{
-			Code: currency.Code,
+			Code:     currency.Code,
 			IsActive: false,
 		},
 	)

@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addToAccountBalance = `-- name: AddToAccountBalance :one
@@ -15,7 +17,7 @@ UPDATE accounts
 SET balance = balance + $1,
     updated_at = now()
 WHERE id = $2
-RETURNING id, user_id, currency, balance, status, created_at, updated_at
+RETURNING id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at
 `
 
 type AddToAccountBalanceParams struct {
@@ -34,14 +36,39 @@ func (q *Queries) AddToAccountBalance(ctx context.Context, arg AddToAccountBalan
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FreezedBy,
+		&i.FreezedAt,
 	)
 	return i, err
+}
+
+const closeAccount = `-- name: CloseAccount :execrows
+UPDATE accounts
+SET
+    status = 'closed'
+WHERE
+    id = $1
+    AND user_id = $2
+    AND status = 'active'
+`
+
+type CloseAccountParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+}
+
+func (q *Queries) CloseAccount(ctx context.Context, arg CloseAccountParams) (int64, error) {
+	result, err := q.db.Exec(ctx, closeAccount, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const createAccount = `-- name: CreateAccount :one
 INSERT INTO accounts(user_id , currency , balance , status )
 VALUES($1,$2,$3,$4)
-RETURNING id, user_id, currency, balance, status, created_at, updated_at
+RETURNING id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at
 `
 
 type CreateAccountParams struct {
@@ -67,30 +94,38 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FreezedBy,
+		&i.FreezedAt,
 	)
 	return i, err
 }
 
-const freezeAccount = `-- name: FreezeAccount :exec
+const freezeAccount = `-- name: FreezeAccount :execrows
 UPDATE accounts 
 SET status = 'frozen' ,
+    freezed_by = $3 ,
+    freezed_at = now(),
     updated_at = now()
-WHERE id =$1 AND user_id = $2
-RETURNING id, user_id, currency, balance, status, created_at, updated_at
+WHERE id =$1 AND user_id = $2 and status = 'active'
+RETURNING id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at
 `
 
 type FreezeAccountParams struct {
-	ID     int64 `json:"id"`
-	UserID int64 `json:"user_id"`
+	ID        int64       `json:"id"`
+	UserID    int64       `json:"user_id"`
+	FreezedBy pgtype.Int8 `json:"freezed_by"`
 }
 
-func (q *Queries) FreezeAccount(ctx context.Context, arg FreezeAccountParams) error {
-	_, err := q.db.Exec(ctx, freezeAccount, arg.ID, arg.UserID)
-	return err
+func (q *Queries) FreezeAccount(ctx context.Context, arg FreezeAccountParams) (int64, error) {
+	result, err := q.db.Exec(ctx, freezeAccount, arg.ID, arg.UserID, arg.FreezedBy)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, user_id, currency, balance, status, created_at, updated_at FROM accounts 
+SELECT id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at FROM accounts 
 WHERE id = $1
 FOR NO KEY UPDATE
 `
@@ -106,12 +141,14 @@ func (q *Queries) GetAccount(ctx context.Context, id int64) (Account, error) {
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FreezedBy,
+		&i.FreezedAt,
 	)
 	return i, err
 }
 
 const getAccountByIDAndUserID = `-- name: GetAccountByIDAndUserID :one
-SELECT id, user_id, currency, balance, status, created_at, updated_at FROM accounts 
+SELECT id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at FROM accounts 
 where id = $1 AND  user_id = $2
 `
 
@@ -131,12 +168,14 @@ func (q *Queries) GetAccountByIDAndUserID(ctx context.Context, arg GetAccountByI
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FreezedBy,
+		&i.FreezedAt,
 	)
 	return i, err
 }
 
 const getAccountByUserAndCurrency = `-- name: GetAccountByUserAndCurrency :one
-SELECT id, user_id, currency, balance, status, created_at, updated_at FROM accounts 
+SELECT id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at FROM accounts 
 WHERE  user_id = $1 AND currency = $2
 `
 
@@ -156,12 +195,69 @@ func (q *Queries) GetAccountByUserAndCurrency(ctx context.Context, arg GetAccoun
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FreezedBy,
+		&i.FreezedAt,
 	)
 	return i, err
 }
 
+const listAccountsAdmin = `-- name: ListAccountsAdmin :many
+SELECT id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at
+FROM accounts
+WHERE ($1::bigint   IS NULL OR user_id  = $1)
+  AND ($2::text    IS NULL OR currency = $2)
+  AND ($3::text      IS NULL OR status   = $3)
+ORDER BY id DESC
+LIMIT $5
+OFFSET $4
+`
+
+type ListAccountsAdminParams struct {
+	UserID   pgtype.Int8 `json:"user_id"`
+	Currency pgtype.Text `json:"currency"`
+	Status   pgtype.Text `json:"status"`
+	Offset   int32       `json:"offset"`
+	Limit    int32       `json:"limit"`
+}
+
+func (q *Queries) ListAccountsAdmin(ctx context.Context, arg ListAccountsAdminParams) ([]Account, error) {
+	rows, err := q.db.Query(ctx, listAccountsAdmin,
+		arg.UserID,
+		arg.Currency,
+		arg.Status,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Account{}
+	for rows.Next() {
+		var i Account
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Currency,
+			&i.Balance,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.FreezedBy,
+			&i.FreezedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAccountsByUserID = `-- name: ListAccountsByUserID :many
-SELECT id, user_id, currency, balance, status, created_at, updated_at FROM accounts 
+SELECT id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at FROM accounts 
 WHERE user_id = $1
 `
 
@@ -182,6 +278,8 @@ func (q *Queries) ListAccountsByUserID(ctx context.Context, userID int64) ([]Acc
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.FreezedBy,
+			&i.FreezedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -199,7 +297,7 @@ UPDATE accounts
 SET balance = balance - $1,
     updated_at = now()
 WHERE id = $2
-RETURNING id, user_id, currency, balance, status, created_at, updated_at
+RETURNING id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at
 `
 
 type SubtractFromAccountBalanceParams struct {
@@ -218,8 +316,35 @@ func (q *Queries) SubtractFromAccountBalance(ctx context.Context, arg SubtractFr
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FreezedBy,
+		&i.FreezedAt,
 	)
 	return i, err
+}
+
+const unFreezeAccount = `-- name: UnFreezeAccount :execrows
+UPDATE accounts
+SET
+    status = 'active',
+    freezed_by = NULL,
+    freezed_at = NULL
+WHERE
+    id = $1
+    AND user_id = $2
+    AND status = 'frozen'
+`
+
+type UnFreezeAccountParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+}
+
+func (q *Queries) UnFreezeAccount(ctx context.Context, arg UnFreezeAccountParams) (int64, error) {
+	result, err := q.db.Exec(ctx, unFreezeAccount, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateAccountBalance = `-- name: UpdateAccountBalance :one
@@ -227,7 +352,7 @@ UPDATE accounts
 SET balance = $1,
     updated_at = now()
 WHERE id = $2
-RETURNING id, user_id, currency, balance, status, created_at, updated_at
+RETURNING id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at
 `
 
 type UpdateAccountBalanceParams struct {
@@ -246,6 +371,8 @@ func (q *Queries) UpdateAccountBalance(ctx context.Context, arg UpdateAccountBal
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FreezedBy,
+		&i.FreezedAt,
 	)
 	return i, err
 }
@@ -255,7 +382,7 @@ UPDATE accounts
 SET status = $1 ,
     updated_at = now()
 WHERE id =$2
-RETURNING id, user_id, currency, balance, status, created_at, updated_at
+RETURNING id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at
 `
 
 type UpdateAccountStatusParams struct {
@@ -274,6 +401,8 @@ func (q *Queries) UpdateAccountStatus(ctx context.Context, arg UpdateAccountStat
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FreezedBy,
+		&i.FreezedAt,
 	)
 	return i, err
 }

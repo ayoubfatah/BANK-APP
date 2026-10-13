@@ -19,6 +19,8 @@ type Account struct {
 	Status    string             `json:"status"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	FreezedBy pgtype.Int8        `json:"freezed_by"`
+	FreezedAt pgtype.Timestamptz `json:"freezed_at"`
 }
 
 type AccountDetail struct {

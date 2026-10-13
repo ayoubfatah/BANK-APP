@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func createNewUser(t *testing.T) db.User {
 	arg := db.CreateUserParams{
 		FirstName: utils.RandomFirstName(),
@@ -41,8 +40,7 @@ func createNewUser(t *testing.T) db.User {
 	require.NotZero(t, user.UpdatedAt)
 
 	return user
- }
-
+}
 
 func TestCreateBusinessTx(t *testing.T) {
 	store := NewStore(testStore.db)
@@ -114,8 +112,7 @@ func TestCreateBusinessTx(t *testing.T) {
 			"owner",
 			result.BusinessMember.Role,
 		)
-		  _ ,err = store.GetBusinessMember(context.Background(), result.BusinessMember.ID)
-		require.NoError(t ,err)
+		_, err = store.GetBusinessMember(context.Background(), result.BusinessMember.ID)
+		require.NoError(t, err)
 	}
 }
-

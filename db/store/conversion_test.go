@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func TestCreateConversionTransaction_AyoubConvertsUSDToEUR(t *testing.T) {
 	store := testStore
 

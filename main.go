@@ -30,9 +30,9 @@ func main() {
 	}
 
 	st := store.NewStore(pool)
-	server , err  := api.NewServer(config,st)
+	server, err := api.NewServer(config, st)
 
-	if  err != nil {
+	if err != nil {
 		log.Fatal("cannot create server: ", err)
 	}
 	if err := server.Start(config.ServerAddress); err != nil {

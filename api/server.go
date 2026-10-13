@@ -57,6 +57,7 @@ func (server *Server) setupRouter() {
 	server.registerAdminUserRoutes(admin)
 	server.registerAdminKYCRoutes(admin)
 	server.registerAdminCurrencyRoutes(admin)
+	server.registerAdminAccountRoutes(admin)
 
 	server.router = router
 }
@@ -109,11 +110,22 @@ func (server *Server) registerAdminCurrencyRoutes(admin gin.IRoutes) {
 func (server *Server) registerAuthenticatedAccountRoutes(admin gin.IRoutes) {
 	admin.POST("/accounts", server.CreateAccount)
 	admin.POST("/accounts/:id/freeze", server.FreezeAccount)
+	admin.POST("/accounts/:id//close", server.CloseAccount)
 	admin.GET("/accounts", server.GetAccounts)
 	admin.GET("/accounts/:id", server.GetAccount)
 
 }
 
+func (server *Server) registerAdminAccountRoutes(admin gin.IRoutes) {
+	admin.GET("/accounts", server.AdminListAccounts)
+	admin.GET("/accounts/:id", server.AdminGetAccount)
+	admin.POST("/accounts/:id/freeze", server.AdminFreezeAccount)
+	admin.POST("/accounts/:id/unfreeze", server.AdminUnfreezeAccount)
+	admin.POST("/accounts/:id/close", server.AdminCloseAccount)
+}
+
 func (server *Server) Start(address string) error {
 	return server.router.Run(address)
 }
+
+

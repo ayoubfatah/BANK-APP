@@ -30,7 +30,7 @@ func handleDBError(ctx *gin.Context, err error) {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
-			
+
 		case "23502":
 			ctx.JSON(http.StatusBadRequest, gin.H{
 				"error": "required field is missing",

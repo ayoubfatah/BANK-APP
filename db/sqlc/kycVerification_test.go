@@ -14,13 +14,13 @@ func createKYC(t *testing.T) (User, KycVerification) {
 	user := createNewUser(t)
 
 	arg := CreateKYCVerificationParams{
-		UserID:         user.ID,
-		DocumentType:   "passport",
+		UserID:       user.ID,
+		DocumentType: "passport",
 		DocumentNumber: pgtype.Text{
 			String: utils.RandomString(10),
-			Valid: true,	
+			Valid:  true,
 		},
-		Status:         "pending",
+		Status: "pending",
 		RejectionReason: pgtype.Text{
 			Valid: false,
 		},
@@ -54,7 +54,6 @@ func TestCreateKYCVerification(t *testing.T) {
 	createKYC(t)
 }
 
-
 // GET KYC VERIFICATION BY ID
 
 func TestGetKYCVerification(t *testing.T) {
@@ -76,7 +75,6 @@ func TestGetKYCVerification(t *testing.T) {
 	require.Equal(t, verification.CreatedAt, verificationFetched.CreatedAt)
 }
 
-
 // GET KYC VERIFICATIONS BY USER ID
 
 func TestGetKYCVerificationByUserID(t *testing.T) {
@@ -95,20 +93,20 @@ func TestGetKYCVerificationByUserID(t *testing.T) {
 	require.Equal(t, verification.Status, verifications[0].Status)
 }
 
-// LIST OF ALL THE KYC VERIFICATIONS 
+// LIST OF ALL THE KYC VERIFICATIONS
 
 func TestListKYCVerifications(t *testing.T) {
-	
+
 	for i := 0; i < 5; i++ {
 		user := createNewUser(t)
 		arg := CreateKYCVerificationParams{
-			UserID:         user.ID,
-			DocumentType:   "passport",
-			DocumentNumber: pgtype.Text{  
-			 String:	utils.RandomString(10),
-			 Valid: true,
+			UserID:       user.ID,
+			DocumentType: "passport",
+			DocumentNumber: pgtype.Text{
+				String: utils.RandomString(10),
+				Valid:  true,
 			},
-			Status:         "pending",
+			Status: "pending",
 			RejectionReason: pgtype.Text{
 				Valid: false,
 			},
@@ -126,11 +124,11 @@ func TestListKYCVerifications(t *testing.T) {
 	}
 
 	arg := ListKYCVerificationsParams{
-	Offset: 0,
-	Limit:5,
+		Offset: 0,
+		Limit:  5,
 	}
 
-	verifications, err := testQueries.ListKYCVerifications(context.Background(),arg)
+	verifications, err := testQueries.ListKYCVerifications(context.Background(), arg)
 
 	require.NoError(t, err)
 	require.Len(t, verifications, 5)
@@ -141,8 +139,6 @@ func TestListKYCVerifications(t *testing.T) {
 		require.Equal(t, "pending", verification.Status)
 	}
 }
-
-
 
 // CHANGE PENDING → VERIFIED
 
@@ -156,7 +152,7 @@ func TestUpdateKYCStatusToVerified(t *testing.T) {
 
 	updated, err := testQueries.VerifyKYC(
 		context.Background(),
-         verification.ID,
+		verification.ID,
 	)
 
 	require.NoError(t, err)
@@ -173,9 +169,6 @@ func TestUpdateKYCStatusToVerified(t *testing.T) {
 
 	require.False(t, updated.RejectionReason.Valid)
 }
-
-
-
 
 // CHANGE PENDING → REJECTED
 
@@ -201,4 +194,3 @@ func TestUpdateKYCStatusToRejected(t *testing.T) {
 	require.Equal(t, "Document is expired", updated.RejectionReason.String)
 	require.False(t, updated.VerifiedAt.Valid)
 }
-

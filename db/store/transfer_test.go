@@ -63,11 +63,11 @@ func TestCreateTransferTransaction_AyoubSendsRoma(t *testing.T) {
 	// balances actually moved
 	ayoubAfter, err := store.GetAccount(context.Background(), ayoub.ID)
 	require.NoError(t, err)
-	require.Equal(t, int64(ayoubBalance -int(amount)) , ayoubAfter.Balance) 
+	require.Equal(t, int64(ayoubBalance-int(amount)), ayoubAfter.Balance)
 
 	romaAfter, err := store.GetAccount(context.Background(), roma.ID)
 	require.NoError(t, err)
-	require.Equal(t, int64(romaBalance + int(amount)), romaAfter.Balance) 
+	require.Equal(t, int64(romaBalance+int(amount)), romaAfter.Balance)
 
 	// entries written correctly
 	ayoubEntries, err := store.ListEntriesByAccountID(context.Background(), ayoub.ID)
@@ -83,21 +83,18 @@ func TestCreateTransferTransaction_AyoubSendsRoma(t *testing.T) {
 	require.Equal(t, amount, romaEntries[0].Amount)
 }
 
-
 func TestCreateTransferTransaction_SameAccount(t *testing.T) {
 	store := testStore
-
-
 
 	user := createTestUser(t, store, "Ayoub", "Test", "ayoub-same@test.com")
 	account := createTestAccount(t, store, user.ID, "USD", 100000)
 
 	err := store.CreateTransferTransaction(context.Background(), CreateTransferTransactionArgs{
-		FromAccountID: account.ID,
-		ToAccountID:   account.ID,
-		Amount:        1000,
-		Currency:      "USD",
-		Status:        "pending",
+		FromAccountID:  account.ID,
+		ToAccountID:    account.ID,
+		Amount:         1000,
+		Currency:       "USD",
+		Status:         "pending",
 		IdempotencyKey: pgtype.Text{String: "test-same-account", Valid: true},
 	})
 
@@ -112,7 +109,6 @@ func TestCreateTransferTransaction_SameAccount(t *testing.T) {
 func TestCreateTransferTransaction_InsufficientFunds(t *testing.T) {
 	store := testStore
 
-
 	ayoubUser := createTestUser(t, store, "Ayoub", "Poor", "ayoub-poor@test.com")
 	romaUser := createTestUser(t, store, "Roma", "Rich", "roma-rich@test.com")
 
@@ -120,11 +116,11 @@ func TestCreateTransferTransaction_InsufficientFunds(t *testing.T) {
 	roma := createTestAccount(t, store, romaUser.ID, "USD", 100000)
 
 	err := store.CreateTransferTransaction(context.Background(), CreateTransferTransactionArgs{
-		FromAccountID: ayoub.ID,
-		ToAccountID:   roma.ID,
-		Amount:        10000, // trying to send $100.00
-		Currency:      "USD",
-		Status:        "pending",
+		FromAccountID:  ayoub.ID,
+		ToAccountID:    roma.ID,
+		Amount:         10000, // trying to send $100.00
+		Currency:       "USD",
+		Status:         "pending",
 		IdempotencyKey: pgtype.Text{String: "test-insufficient-funds", Valid: true},
 	})
 
@@ -151,7 +147,6 @@ func TestCreateTransferTransaction_InsufficientFunds(t *testing.T) {
 func TestCreateTransferTransaction_CurrencyMismatch(t *testing.T) {
 	store := testStore
 
-
 	ayoubUser := createTestUser(t, store, "Ayoub", "USD", "ayoub-usd@test.com")
 	romaUser := createTestUser(t, store, "Roma", "EUR", "roma-eur@test.com")
 
@@ -159,11 +154,11 @@ func TestCreateTransferTransaction_CurrencyMismatch(t *testing.T) {
 	roma := createTestAccount(t, store, romaUser.ID, "EUR", 100000)
 
 	err := store.CreateTransferTransaction(context.Background(), CreateTransferTransactionArgs{
-		FromAccountID: ayoub.ID,
-		ToAccountID:   roma.ID,
-		Amount:        10000,
-		Currency:      "USD",
-		Status:        "pending",
+		FromAccountID:  ayoub.ID,
+		ToAccountID:    roma.ID,
+		Amount:         10000,
+		Currency:       "USD",
+		Status:         "pending",
 		IdempotencyKey: pgtype.Text{String: "test-currency-mismatch", Valid: true},
 	})
 
@@ -181,7 +176,6 @@ func TestCreateTransferTransaction_CurrencyMismatch(t *testing.T) {
 func TestCreateTransferTransaction_SenderFrozen(t *testing.T) {
 	store := testStore
 
-
 	ayoubUser := createTestUser(t, store, "Ayoub", "Frozen", "ayoub-frozen@test.com")
 	romaUser := createTestUser(t, store, "Roma", "Test", "roma-recv@test.com")
 
@@ -195,11 +189,11 @@ func TestCreateTransferTransaction_SenderFrozen(t *testing.T) {
 	require.NoError(t, err)
 
 	err = store.CreateTransferTransaction(context.Background(), CreateTransferTransactionArgs{
-		FromAccountID: ayoub.ID,
-		ToAccountID:   roma.ID,
-		Amount:        10000,
-		Currency:      "USD",
-		Status:        "pending",
+		FromAccountID:  ayoub.ID,
+		ToAccountID:    roma.ID,
+		Amount:         10000,
+		Currency:       "USD",
+		Status:         "pending",
 		IdempotencyKey: pgtype.Text{String: "test-sender-frozen", Valid: true},
 	})
 
@@ -214,7 +208,6 @@ func TestCreateTransferTransaction_SenderFrozen(t *testing.T) {
 func TestCreateTransferTransaction_ReceiverFrozen(t *testing.T) {
 	store := testStore
 
-
 	ayoubUser := createTestUser(t, store, "Ayoub", "Test", "ayoub-send2@test.com")
 	romaUser := createTestUser(t, store, "Roma", "Frozen", "roma-frozen@test.com")
 
@@ -228,11 +221,11 @@ func TestCreateTransferTransaction_ReceiverFrozen(t *testing.T) {
 	require.NoError(t, err)
 
 	err = store.CreateTransferTransaction(context.Background(), CreateTransferTransactionArgs{
-		FromAccountID: ayoub.ID,
-		ToAccountID:   roma.ID,
-		Amount:        10000,
-		Currency:      "USD",
-		Status:        "pending",
+		FromAccountID:  ayoub.ID,
+		ToAccountID:    roma.ID,
+		Amount:         10000,
+		Currency:       "USD",
+		Status:         "pending",
 		IdempotencyKey: pgtype.Text{String: "test-receiver-frozen", Valid: true},
 	})
 
@@ -247,18 +240,17 @@ func TestCreateTransferTransaction_ReceiverFrozen(t *testing.T) {
 func TestCreateTransferTransaction_ReceiverDoesNotExist(t *testing.T) {
 	store := testStore
 
-
 	ayoubUser := createTestUser(t, store, "Ayoub", "Test", "ayoub-noreceiver@test.com")
 	ayoub := createTestAccount(t, store, ayoubUser.ID, "USD", 100000)
 
 	const nonExistentAccountID = 999999999
 
 	err := store.CreateTransferTransaction(context.Background(), CreateTransferTransactionArgs{
-		FromAccountID: ayoub.ID,
-		ToAccountID:   nonExistentAccountID,
-		Amount:        10000,
-		Currency:      "USD",
-		Status:        "pending",
+		FromAccountID:  ayoub.ID,
+		ToAccountID:    nonExistentAccountID,
+		Amount:         10000,
+		Currency:       "USD",
+		Status:         "pending",
 		IdempotencyKey: pgtype.Text{String: "test-receiver-missing", Valid: true},
 	})
 
@@ -272,7 +264,6 @@ func TestCreateTransferTransaction_ReceiverDoesNotExist(t *testing.T) {
 func TestCreateTransferTransaction_StatusIsCompleted(t *testing.T) {
 	store := testStore
 
-
 	ayoubUser := createTestUser(t, store, "Ayoub", "Status", "ayoub-status@test.com")
 	romaUser := createTestUser(t, store, "Roma", "Status", "roma-status@test.com")
 
@@ -280,11 +271,11 @@ func TestCreateTransferTransaction_StatusIsCompleted(t *testing.T) {
 	roma := createTestAccount(t, store, romaUser.ID, "USD", 100000)
 
 	err := store.CreateTransferTransaction(context.Background(), CreateTransferTransactionArgs{
-		FromAccountID: ayoub.ID,
-		ToAccountID:   roma.ID,
-		Amount:        5000,
-		Currency:      "USD",
-		Status:        "pending", // starts pending, function should flip it
+		FromAccountID:  ayoub.ID,
+		ToAccountID:    roma.ID,
+		Amount:         5000,
+		Currency:       "USD",
+		Status:         "pending", // starts pending, function should flip it
 		IdempotencyKey: pgtype.Text{String: "test-status-completed", Valid: true},
 	})
 	require.NoError(t, err)

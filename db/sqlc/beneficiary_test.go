@@ -38,7 +38,7 @@ func createRandomBeneficiary(t *testing.T, user User) Beneficiary {
 
 		Currency: pgtype.Text{
 			String: "MAD",
-			Valid: true,
+			Valid:  true,
 		},
 	}
 
@@ -187,7 +187,7 @@ func TestListBeneficiariesByUserID(t *testing.T) {
 
 			Currency: pgtype.Text{
 				String: "MAD",
-				Valid: true,
+				Valid:  true,
 			},
 		}
 
@@ -245,7 +245,7 @@ func TestUpdateBeneficiary(t *testing.T) {
 
 		Currency: pgtype.Text{
 			String: "EUR",
-			Valid: true,
+			Valid:  true,
 		},
 
 		UserID: user.ID,
@@ -363,14 +363,14 @@ func TestCreateBeneficiaryInvalidUser(t *testing.T) {
 
 		BankName: pgtype.Text{
 			String: "CIH Bank",
-			Valid: true,
+			Valid:  true,
 		},
 
 		Country: "MA",
 
 		Currency: pgtype.Text{
 			String: "MAD",
-			Valid: true,
+			Valid:  true,
 		},
 	}
 

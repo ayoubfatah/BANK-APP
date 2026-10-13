@@ -9,9 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
-
-
 func createNewBusiness(t *testing.T) Business {
 	user := createNewUser(t)
 

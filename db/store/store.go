@@ -17,7 +17,7 @@ type Store struct {
 func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{
 		db:      pool,
-		Queries: db.New(pool), 
+		Queries: db.New(pool),
 	}
 }
 
@@ -43,7 +43,3 @@ func (store *Store) execTx(
 
 	return tx.Commit(ctx)
 }
-
-
-
-

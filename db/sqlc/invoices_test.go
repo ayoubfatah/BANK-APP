@@ -14,7 +14,7 @@ func createInvoiceUtil(t *testing.T) Invoice {
 	business := createNewBusiness(t)
 
 	args := CreateInvoiceParams{
-		BusinessID: business.ID,
+		BusinessID:   business.ID,
 		CustomerName: "Ayoub",
 		CustomerEmail: pgtype.Text{
 			String: "ayoub@gmail.com",
@@ -79,7 +79,7 @@ func TestListInvoicesByBusinessID(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		args := CreateInvoiceParams{
-			BusinessID: business.ID,
+			BusinessID:   business.ID,
 			CustomerName: utils.RandomFirstName(),
 			CustomerEmail: pgtype.Text{
 				String: utils.RandomEmail(),
@@ -189,7 +189,7 @@ func TestMarkInvoiceAsOverdue(t *testing.T) {
 	business := createNewBusiness(t)
 
 	args := CreateInvoiceParams{
-		BusinessID: business.ID,
+		BusinessID:   business.ID,
 		CustomerName: "Overdue Customer",
 		CustomerEmail: pgtype.Text{
 			String: "overdue@gmail.com",

@@ -11,9 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
-
-
 func createNewBusiness(t *testing.T) db.Business {
 	user := createNewUser(t)
 
@@ -39,7 +36,7 @@ func createInvoiceUtil(t *testing.T) db.Invoice {
 	business := createNewBusiness(t)
 
 	args := db.CreateInvoiceParams{
-		BusinessID: business.ID,
+		BusinessID:   business.ID,
 		CustomerName: "Ayoub",
 		CustomerEmail: pgtype.Text{
 			String: "ayoub@gmail.com",
@@ -237,9 +234,7 @@ func TestMarkInvoiceAsPaidTransactionInsufficientFunds(t *testing.T) {
 	require.False(t, updatedInvoice.PaidAt.Valid)
 }
 
-
 func TestMarkInvoiceAsPaidTransactionInvalidInvoice(t *testing.T) {
-
 
 	fromUser := createNewUser(t)
 	toUser := createNewUser(t)

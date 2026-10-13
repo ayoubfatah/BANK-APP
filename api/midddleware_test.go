@@ -32,7 +32,7 @@ func createTestToken(
 ) string {
 	t.Helper()
 
-	tokenString, _,err := maker.CreateToken(
+	tokenString, _, err := maker.CreateToken(
 		"test@example.com",
 		1,
 		role,
@@ -53,7 +53,6 @@ func TestAuthMiddleware(t *testing.T) {
 
 	t.Logf("Decoded payload: %+v", payload)
 	require.Equal(t, "customer", payload.Role)
-
 
 	testCases := []struct {
 		name           string

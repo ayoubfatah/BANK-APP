@@ -10,13 +10,12 @@ import (
 )
 
 type renewAccessTokenRequest struct {
-	RefreshToken    string `json:"refresh_token" binding:"required"`
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
 type renewAccessTokenResponse struct {
-	AccessToken          string      `json:"access_token"`
-	AccessTokenExpiresAt time.Time   `json:"access_token_expires_at"`
-
+	AccessToken          string    `json:"access_token"`
+	AccessTokenExpiresAt time.Time `json:"access_token_expires_at"`
 }
 
 func (server *Server) renewAccessToken(ctx *gin.Context) {
@@ -27,52 +26,49 @@ func (server *Server) renewAccessToken(ctx *gin.Context) {
 		return
 	}
 
-	refreshPayload , err := server.tokenMaker.VerifyToken(req.RefreshToken)
+	refreshPayload, err := server.tokenMaker.VerifyToken(req.RefreshToken)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	
+
 	invalid := errors.New("Session does'nt exist ")
 
-
-	session , err := server.store.GetRefreshTokenByHash(ctx, req.RefreshToken)
+	session, err := server.store.GetRefreshTokenByHash(ctx, req.RefreshToken)
 
 	if err != nil {
-	if errors.Is(err, pgx.ErrNoRows) {
-		ctx.JSON(http.StatusUnauthorized, errorResponse(invalid))
+		if errors.Is(err, pgx.ErrNoRows) {
+			ctx.JSON(http.StatusUnauthorized, errorResponse(invalid))
+			return
+		}
+
+		handleDBError(ctx, err)
 		return
 	}
 
-	handleDBError(ctx, err)
-	return
-	}
-
-
-
 	if session.IsBlocked || session.RevokedAt.Valid {
-    ctx.JSON(http.StatusUnauthorized, gin.H{
-        "error": "refresh token is no longer valid",
-    })
-    return
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "refresh token is no longer valid",
+		})
+		return
 	}
 
 	if session.UserID != refreshPayload.UserID {
-    ctx.JSON(http.StatusUnauthorized, gin.H{
-        "error": "invalid session",
-    })
-    return
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "invalid session",
+		})
+		return
 	}
 
 	if time.Now().After(session.ExpiresAt.Time) {
-    ctx.JSON(http.StatusUnauthorized, gin.H{
-        "error": "refresh token has expired",
-    })
-    return
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "refresh token has expired",
+		})
+		return
 	}
 
-	accessToken , accessPayload , err := server.tokenMaker.CreateToken(
+	accessToken, accessPayload, err := server.tokenMaker.CreateToken(
 		refreshPayload.Email,
 		refreshPayload.UserID,
 		refreshPayload.Role,
@@ -85,8 +81,7 @@ func (server *Server) renewAccessToken(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, renewAccessTokenResponse{
-		AccessToken: accessToken,
+		AccessToken:          accessToken,
 		AccessTokenExpiresAt: accessPayload.ExpiredAt,
-
 	})
 }

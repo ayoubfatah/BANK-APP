@@ -106,8 +106,6 @@ func TestListEntriesByAccountID(t *testing.T) {
 	}
 }
 
-
-
 func TestEntriesBelongToCorrectAccount(t *testing.T) {
 	account1 := createRandomAccount(t)
 	account2 := createRandomAccount(t)
@@ -201,8 +199,6 @@ func TestListEntriesByAccountIDWithPagination(t *testing.T) {
 
 	require.NotEqual(t, firstPage[0].ID, secondPage[0].ID)
 }
-
-
 
 func TestEntriesOrderedByCreatedAt(t *testing.T) {
 	account := createRandomAccount(t)

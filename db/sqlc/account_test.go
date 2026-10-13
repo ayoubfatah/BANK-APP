@@ -54,8 +54,6 @@ func TestCreateAccount(t *testing.T) {
 	require.NotZero(t, account.UpdatedAt)
 }
 
-
-
 func TestGetAccount(t *testing.T) {
 	account := createRandomAccount(t)
 
@@ -72,8 +70,6 @@ func TestGetAccount(t *testing.T) {
 	require.Equal(t, account.Balance, result.Balance)
 	require.Equal(t, account.Status, result.Status)
 }
-
-
 
 func TestGetAccountByUserAndCurrency(t *testing.T) {
 	user := createNewUser(t)

@@ -22,18 +22,16 @@ import (
 // add entry for ayoub as withdrawl - 100 sent money to roma + date
 // make a fee  table if fees where used
 
-
 var (
 	ErrSameAccount       = errors.New("cannot transfer to the same account")
 	ErrAccountNotFound   = errors.New("account not found")
 	ErrInsufficientFunds = errors.New("insufficient funds")
 	ErrCurrencyMismatch  = errors.New("accounts must use the same currency")
-
 )
 
 type CreateTransferTransactionArgs struct {
-	FromAccountID  int64  				`json:"from_account_id"`
-	ToAccountID  int64  				`json:"to_account_id"`
+	FromAccountID  int64       `json:"from_account_id"`
+	ToAccountID    int64       `json:"to_account_id"`
 	Amount         int64       `json:"amount"`
 	Currency       string      `json:"currency"`
 	Status         string      `json:"status"`
@@ -41,29 +39,29 @@ type CreateTransferTransactionArgs struct {
 	IdempotencyKey pgtype.Text `json:"idempotency_key"`
 }
 
-func (store  *Store )CreateTransferTransaction(ctx context.Context , args CreateTransferTransactionArgs) error{
+func (store *Store) CreateTransferTransaction(ctx context.Context, args CreateTransferTransactionArgs) error {
 	// lets lock accounts first in a consistent order
-    err := store.execTx(ctx , func(q *db.Queries) error {
+	err := store.execTx(ctx, func(q *db.Queries) error {
 
-	if args.IdempotencyKey.Valid {
-    _, err := q.GetTransferByIdempotencyKey(ctx, args.IdempotencyKey)
-    if err == nil {
-        return nil
-    }
-    if !errors.Is(err, pgx.ErrNoRows) {
-        return err
-    }
-}
+		if args.IdempotencyKey.Valid {
+			_, err := q.GetTransferByIdempotencyKey(ctx, args.IdempotencyKey)
+			if err == nil {
+				return nil
+			}
+			if !errors.Is(err, pgx.ErrNoRows) {
+				return err
+			}
+		}
 
-	if ( args.FromAccountID == args.ToAccountID){
-	return ErrSameAccount
-	}
+		if args.FromAccountID == args.ToAccountID {
+			return ErrSameAccount
+		}
 
-	firstID , secondID := args.FromAccountID , args.ToAccountID
-	if firstID > secondID {
-		firstID , secondID = secondID, firstID
-	}
-	first, err := q.GetAccount(ctx, firstID)
+		firstID, secondID := args.FromAccountID, args.ToAccountID
+		if firstID > secondID {
+			firstID, secondID = secondID, firstID
+		}
+		first, err := q.GetAccount(ctx, firstID)
 		if err != nil {
 			return err
 		}
@@ -71,137 +69,131 @@ func (store  *Store )CreateTransferTransaction(ctx context.Context , args Create
 		second, err := q.GetAccount(ctx, secondID)
 		if err != nil {
 			return err
-	}
-	fromAccount , toAccount  := first, second
+		}
+		fromAccount, toAccount := first, second
 
-	// lets find out which one is sending which on is receiving  the money
-	    if first.ID != args.FromAccountID {
-        fromAccount, toAccount = second, first
-    }
+		// lets find out which one is sending which on is receiving  the money
+		if first.ID != args.FromAccountID {
+			fromAccount, toAccount = second, first
+		}
 
-	if fromAccount.Status != "active" {
+		if fromAccount.Status != "active" {
 			return fmt.Errorf("source account %d is not active", fromAccount.ID)
 		}
 
-	if toAccount.Status != "active" {
+		if toAccount.Status != "active" {
 			return fmt.Errorf("destination account %d is not active", toAccount.ID)
-	}
+		}
 
+		// check if both profile have the same currency
+		if fromAccount.Currency != toAccount.Currency {
+			return ErrCurrencyMismatch
+		}
 
-	// check if both profile have the same currency 
-	if (fromAccount.Currency != toAccount.Currency){
-		return ErrCurrencyMismatch
-	}
-	
-	if (fromAccount.Balance < args.Amount){
-		return ErrInsufficientFunds
-	}
+		if fromAccount.Balance < args.Amount {
+			return ErrInsufficientFunds
+		}
 
-	transfer , err := q.CreateTransfer(context.Background(),
+		transfer, err := q.CreateTransfer(context.Background(),
 
-    db.CreateTransferParams{
-    FromAccountID: pgtype.Int8{
-        Int64: fromAccount.ID,
-        Valid: true,
-    },
-    ToAccountID: pgtype.Int8{
-        Int64: toAccount.ID,
-        Valid: true,
-    },
-	Amount: args.Amount,
-	Currency: args.Currency,
-	Status: args.Status,
-	Reference: args.Reference,
-	IdempotencyKey: args.IdempotencyKey,
-},)
+			db.CreateTransferParams{
+				FromAccountID: pgtype.Int8{
+					Int64: fromAccount.ID,
+					Valid: true,
+				},
+				ToAccountID: pgtype.Int8{
+					Int64: toAccount.ID,
+					Valid: true,
+				},
+				Amount:         args.Amount,
+				Currency:       args.Currency,
+				Status:         args.Status,
+				Reference:      args.Reference,
+				IdempotencyKey: args.IdempotencyKey,
+			})
 
+		if err != nil {
+			return err
+		}
+		_, err = q.UpdateTransferStatus(context.Background(),
+			db.UpdateTransferStatusParams{
+				ID:      transfer.ID,
+				Column2: "completed",
+			})
 
-	if err !=nil {
-		return  err
-	}
-	_,err = q.UpdateTransferStatus(context.Background(),
-	db.UpdateTransferStatusParams{
-	ID: transfer.ID,
-	Column2: "completed",
-	
-	})
+		if err != nil {
+			return err
+		}
 
-	if err !=nil {
-		return  err
-	}
+		//  remove money from sender
 
+		_, err = q.SubtractFromAccountBalance(
+			ctx,
+			db.SubtractFromAccountBalanceParams{
+				Balance: args.Amount,
+				ID:      fromAccount.ID,
+			},
+		)
 
-	//  remove money from sender 
+		if err != nil {
+			return err
+		}
 
-	   _, err = q.SubtractFromAccountBalance(
-            ctx,
-            db.SubtractFromAccountBalanceParams{
-                Balance: args.Amount,
-                ID:      fromAccount.ID,
-            },
-        )
+		// add money to receiver
+		_, err = q.AddToAccountBalance(
+			ctx,
+			db.AddToAccountBalanceParams{
+				Balance: args.Amount,
+				ID:      toAccount.ID,
+			},
+		)
+		if err != nil {
+			return err
+		}
 
-        if err != nil {
-            return err
-        }
+		//  sender entry
+		fromDescription := fmt.Sprintf("Transfer to account %d", toAccount.ID)
 
-		// add money to receiver 
-	   _, err = q.AddToAccountBalance(
-            ctx,
-            db.AddToAccountBalanceParams{
-                Balance: args.Amount,
-                ID:      toAccount.ID,
-            },
-        )
-		 if err != nil {
-            return err
-        }
+		_, err = q.CreateEntry(
+			ctx,
+			db.CreateEntryParams{
+				AccountID: fromAccount.ID,
+				Amount:    args.Amount,
+				Currency:  args.Currency,
+				Type:      "withdrawal",
+				Description: pgtype.Text{
+					String: fromDescription,
+					Valid:  true,
+				},
+			},
+		)
 
-	//  sender entry 
-	fromDescription := fmt.Sprintf("Transfer to account %d", toAccount.ID)
+		if err != nil {
+			return err
+		}
 
-        _, err = q.CreateEntry(
-            ctx,
-            db.CreateEntryParams{
-                AccountID: fromAccount.ID,
-                Amount:    args.Amount,
-                Currency:  args.Currency,
-                Type:      "withdrawal",
-                Description: pgtype.Text{
-                    String: fromDescription,
-                    Valid:  true,
-                },
-            },
-        )
-
-        if err != nil {
-            return err
-        }
-
-		//    receiver entry 
+		//    receiver entry
 		toDescription := fmt.Sprintf("Transfer from account %d", fromAccount.ID)
 
-        _, err = q.CreateEntry(
-            ctx,
-            db.CreateEntryParams{
-                AccountID: toAccount.ID,
-                Amount:    args.Amount,
-                Currency:  args.Currency,
-                Type:      "deposit",
-                Description: pgtype.Text{
-                    String: toDescription,
-                    Valid:  true,
-                },
-            },
-        )
+		_, err = q.CreateEntry(
+			ctx,
+			db.CreateEntryParams{
+				AccountID: toAccount.ID,
+				Amount:    args.Amount,
+				Currency:  args.Currency,
+				Type:      "deposit",
+				Description: pgtype.Text{
+					String: toDescription,
+					Valid:  true,
+				},
+			},
+		)
 
-        if err != nil {
-            return err
-        }
+		if err != nil {
+			return err
+		}
 
-
-
-	return nil 
+		return nil
 	})
 	return err
 }

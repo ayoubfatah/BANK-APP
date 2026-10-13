@@ -30,11 +30,11 @@ func createRandomCard(t *testing.T) db.Card {
 	card, err := testStore.CreateCard(
 		context.Background(),
 		db.CreateCardParams{
-			UserID:   user.ID,
+			UserID:    user.ID,
 			AccountID: account.ID,
-			LastFour: "4242",
-			CardType: "physical",
-			Status:   "active",
+			LastFour:  "4242",
+			CardType:  "physical",
+			Status:    "active",
 			ExpiryDate: pgtype.Date{
 				Time:  time.Now().AddDate(3, 0, 0),
 				Valid: true,
@@ -92,7 +92,6 @@ func createCardTransaction(t *testing.T) db.CardTransaction {
 	return cardTxn
 }
 
-
 func TestCreateCardTransaction(t *testing.T) {
 	createCardTransaction(t)
 }
@@ -115,9 +114,9 @@ func TestCaptureCardTransactionTx(t *testing.T) {
 	cardTxn, err := store.CreateCardTransaction(
 		context.Background(),
 		CreateCardTransactionParams{
-			CardID:           card.ID,
-			AccountID:        account.ID,
-			MerchantName:     "Starbucks",
+			CardID:       card.ID,
+			AccountID:    account.ID,
+			MerchantName: "Starbucks",
 			MerchantCategory: pgtype.Text{
 				String: "coffee_shop",
 				Valid:  true,
@@ -171,12 +170,12 @@ func TestCaptureCardTransactionTx(t *testing.T) {
 	// --------------------------------------------------
 
 	entries, err := store.GetEntriesByReferenceID(
-	context.Background(),
-	pgtype.Int8{
-		Int64: cardTxn.ID,
-		Valid: true,
-	},
-)
+		context.Background(),
+		pgtype.Int8{
+			Int64: cardTxn.ID,
+			Valid: true,
+		},
+	)
 
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
@@ -234,8 +233,6 @@ func TestCaptureCardTransactionTx(t *testing.T) {
 	require.Equal(t, account.ID, updatedCardTxn.AccountID)
 }
 
-
-
 func TestVoidCardTransaction(t *testing.T) {
 	store := NewStore(testStore.db)
 
@@ -273,7 +270,7 @@ func TestExpireOldAuthorizations(t *testing.T) {
 	for _, e := range expired {
 		require.Equal(t, "expired", e.Status)
 		if e.ID == txn.ID {
-			found = true 
+			found = true
 		}
 	}
 	require.True(t, found)

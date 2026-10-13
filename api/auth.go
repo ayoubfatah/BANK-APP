@@ -21,12 +21,12 @@ type loginUserRequest struct {
 }
 
 type loginUserResponse struct {
-	SessionID  uuid.UUID `json:"session_id"`
-	AccessToken          string      `json:"access_token"`
-	RefreshToken          string      `json:"refresh_token"`
-	AccessTokenExpiresAt time.Time   `json:"access_token_expires_at"`
-	RefreshTokenExpiresAt time.Time   `json:"refresh_token_expires_at"`
-	User                 userResponse `json:"user"`
+	SessionID             uuid.UUID    `json:"session_id"`
+	AccessToken           string       `json:"access_token"`
+	RefreshToken          string       `json:"refresh_token"`
+	AccessTokenExpiresAt  time.Time    `json:"access_token_expires_at"`
+	RefreshTokenExpiresAt time.Time    `json:"refresh_token_expires_at"`
+	User                  userResponse `json:"user"`
 }
 
 func (server *Server) loginUser(ctx *gin.Context) {
@@ -41,13 +41,13 @@ func (server *Server) loginUser(ctx *gin.Context) {
 
 	user, err := server.store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-	if errors.Is(err, pgx.ErrNoRows) {
-		ctx.JSON(http.StatusUnauthorized, errorResponse(invalid))
-		return
-	}
+		if errors.Is(err, pgx.ErrNoRows) {
+			ctx.JSON(http.StatusUnauthorized, errorResponse(invalid))
+			return
+		}
 
-	handleDBError(ctx, err)
-	return
+		handleDBError(ctx, err)
+		return
 	}
 
 	if !utils.CheckPasswordHash(req.Password, user.PasswordHash) {
@@ -62,7 +62,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		return
 	}
 
-	accessToken , accessPayload , err := server.tokenMaker.CreateToken(
+	accessToken, accessPayload, err := server.tokenMaker.CreateToken(
 		user.Email,
 		user.ID,
 		user.Role,
@@ -73,7 +73,7 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
-	refreshToken, refreshPayload , err := server.tokenMaker.CreateToken(
+	refreshToken, refreshPayload, err := server.tokenMaker.CreateToken(
 		user.Email,
 		user.ID,
 		user.Role,
@@ -86,38 +86,35 @@ func (server *Server) loginUser(ctx *gin.Context) {
 
 	userAgent := ctx.GetHeader("User-Agent")
 	clientIP := ctx.ClientIP()
-	
-	_,  err=  server.store.CreateRefreshToken(ctx ,  db.CreateRefreshTokenParams{
-	ID  : pgtype.UUID{
+
+	_, err = server.store.CreateRefreshToken(ctx, db.CreateRefreshTokenParams{
+		ID: pgtype.UUID{
 			Bytes: refreshPayload.ID,
 			Valid: true,
-	},
-    UserID : user.ID ,
-    TokenHash: refreshToken ,
-    UserAgent:  userAgent,
-	ClientIp: netip.MustParseAddr(clientIP),
-    ExpiresAt: pgtype.Timestamptz{
-		Time:  refreshPayload.ExpiredAt,
-		Valid: true,
-	} ,
-	
-	 })
+		},
+		UserID:    user.ID,
+		TokenHash: refreshToken,
+		UserAgent: userAgent,
+		ClientIp:  netip.MustParseAddr(clientIP),
+		ExpiresAt: pgtype.Timestamptz{
+			Time:  refreshPayload.ExpiredAt,
+			Valid: true,
+		},
+	})
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 	ctx.JSON(http.StatusOK, loginUserResponse{
-		SessionID: refreshPayload.ID,
-		User:                 newUserResponse(user),
-		AccessToken: accessToken,
-		AccessTokenExpiresAt:accessPayload.ExpiredAt ,
-		RefreshToken: refreshToken,
-		RefreshTokenExpiresAt :refreshPayload.ExpiredAt , 
-
+		SessionID:             refreshPayload.ID,
+		User:                  newUserResponse(user),
+		AccessToken:           accessToken,
+		AccessTokenExpiresAt:  accessPayload.ExpiredAt,
+		RefreshToken:          refreshToken,
+		RefreshTokenExpiresAt: refreshPayload.ExpiredAt,
 	})
 }
-
 
 type logoutRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
@@ -171,4 +168,3 @@ func (server *Server) logoutUser(ctx *gin.Context) {
 
 	ctx.Status(http.StatusNoContent)
 }
-

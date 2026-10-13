@@ -75,7 +75,7 @@ func TestCreateAccountTx(t *testing.T) {
 			partner := getActivePartner(t, store, tc.currency, tc.country)
 
 			result, err := store.CreateAccountTx(ctx, CreateAccountTxArguments{
-				UserID:             user.ID,
+				UserID:           user.ID,
 				CurrencyCode:     tc.currency,
 				BankingPartnerID: partner.ID,
 				Balance:          0,
@@ -116,7 +116,7 @@ func TestCreateAccountTx_InvalidCurrency(t *testing.T) {
 	partner := getActivePartner(t, store, "EUR", "DE")
 
 	_, err := store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
-		UserID:             user.ID,
+		UserID:           user.ID,
 		CurrencyCode:     "ZZZ",
 		BankingPartnerID: partner.ID,
 	})
@@ -129,7 +129,7 @@ func TestCreateAccountTx_PartnerNotFound(t *testing.T) {
 	user := createNewUser(t)
 
 	_, err := store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
-		UserID:             user.ID,
+		UserID:           user.ID,
 		CurrencyCode:     "EUR",
 		BankingPartnerID: 999999999,
 	})
