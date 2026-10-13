@@ -14,6 +14,8 @@ jobs:
       postgres:
         image: postgres:12
         env:
+          TOKEN_SYMMETRIC_KEY: ${{ secrets.TOKEN_SYMMETRIC_KEY }}
+          ACCESS_TOKEN_DURATION: 15m
           POSTGRES_USER: root
           POSTGRES_PASSWORD: illchangeitlater
           POSTGRES_DB: bank-app
