@@ -1,0 +1,3 @@
+ALTER TABLE accounts
+ADD COLUMN freezed_by BIGINT REFERENCES users(id),
+ADD COLUMN freezed_at TIMESTAMPTZ;

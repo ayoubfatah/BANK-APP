@@ -71,6 +71,24 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 	return i, err
 }
 
+const freezeAccount = `-- name: FreezeAccount :exec
+UPDATE accounts 
+SET status = 'frozen' ,
+    updated_at = now()
+WHERE id =$1 AND user_id = $2
+RETURNING id, user_id, currency, balance, status, created_at, updated_at
+`
+
+type FreezeAccountParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+}
+
+func (q *Queries) FreezeAccount(ctx context.Context, arg FreezeAccountParams) error {
+	_, err := q.db.Exec(ctx, freezeAccount, arg.ID, arg.UserID)
+	return err
+}
+
 const getAccount = `-- name: GetAccount :one
 SELECT id, user_id, currency, balance, status, created_at, updated_at FROM accounts 
 WHERE id = $1
@@ -79,6 +97,31 @@ FOR NO KEY UPDATE
 
 func (q *Queries) GetAccount(ctx context.Context, id int64) (Account, error) {
 	row := q.db.QueryRow(ctx, getAccount, id)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Currency,
+		&i.Balance,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getAccountByIDAndUserID = `-- name: GetAccountByIDAndUserID :one
+SELECT id, user_id, currency, balance, status, created_at, updated_at FROM accounts 
+where id = $1 AND  user_id = $2
+`
+
+type GetAccountByIDAndUserIDParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+}
+
+func (q *Queries) GetAccountByIDAndUserID(ctx context.Context, arg GetAccountByIDAndUserIDParams) (Account, error) {
+	row := q.db.QueryRow(ctx, getAccountByIDAndUserID, arg.ID, arg.UserID)
 	var i Account
 	err := row.Scan(
 		&i.ID,

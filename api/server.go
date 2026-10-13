@@ -108,6 +108,10 @@ func (server *Server) registerAdminCurrencyRoutes(admin gin.IRoutes) {
 }
 func (server *Server) registerAuthenticatedAccountRoutes(admin gin.IRoutes) {
 	admin.POST("/accounts", server.CreateAccount)
+	admin.POST("/accounts/:id/freeze", server.FreezeAccount)
+	admin.GET("/accounts", server.GetAccounts)
+	admin.GET("/accounts/:id", server.GetAccount)
+
 }
 
 func (server *Server) Start(address string) error {

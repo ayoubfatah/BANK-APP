@@ -14,6 +14,9 @@ FOR NO KEY UPDATE
 SELECT * FROM accounts 
 WHERE  user_id = $1 AND currency = $2;
 
+-- name: GetAccountByIDAndUserID :one 
+SELECT * FROM accounts 
+where id = $1 AND  user_id = $2 ;
 
 
 -- name: ListAccountsByUserID :many
@@ -50,3 +53,11 @@ SET balance = balance - $1,
     updated_at = now()
 WHERE id = $2
 RETURNING *;
+
+
+-- name: FreezeAccount :exec 
+UPDATE accounts 
+SET status = 'frozen' ,
+    updated_at = now()
+WHERE id =$1 AND user_id = $2
+RETURNING * ;
