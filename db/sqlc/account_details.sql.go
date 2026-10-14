@@ -140,16 +140,44 @@ func (q *Queries) ListAccountDetails(ctx context.Context, arg ListAccountDetails
 const updateAccountDetail = `-- name: UpdateAccountDetail :exec
 UPDATE account_details
 SET
-    account_id = $2,
-    type = $3,
-    value = $4,
-    country = $5,
-    bank_name = $6
+    type = $2,
+    value = $3,
+    country = $4,
+    bank_name = $5
 WHERE id = $1
 `
 
 type UpdateAccountDetailParams struct {
-	ID        int64       `json:"id"`
+	ID       int64       `json:"id"`
+	Type     string      `json:"type"`
+	Value    string      `json:"value"`
+	Country  pgtype.Text `json:"country"`
+	BankName pgtype.Text `json:"bank_name"`
+}
+
+func (q *Queries) UpdateAccountDetail(ctx context.Context, arg UpdateAccountDetailParams) error {
+	_, err := q.db.Exec(ctx, updateAccountDetail,
+		arg.ID,
+		arg.Type,
+		arg.Value,
+		arg.Country,
+		arg.BankName,
+	)
+	return err
+}
+
+const updateAccountDetailByAccountID = `-- name: UpdateAccountDetailByAccountID :one
+UPDATE account_details
+SET
+    type = $2,
+    value = $3,
+    country = $4,
+    bank_name = $5
+WHERE account_id = $1
+RETURNING id, account_id, type, value, country, bank_name, created_at
+`
+
+type UpdateAccountDetailByAccountIDParams struct {
 	AccountID int64       `json:"account_id"`
 	Type      string      `json:"type"`
 	Value     string      `json:"value"`
@@ -157,14 +185,23 @@ type UpdateAccountDetailParams struct {
 	BankName  pgtype.Text `json:"bank_name"`
 }
 
-func (q *Queries) UpdateAccountDetail(ctx context.Context, arg UpdateAccountDetailParams) error {
-	_, err := q.db.Exec(ctx, updateAccountDetail,
-		arg.ID,
+func (q *Queries) UpdateAccountDetailByAccountID(ctx context.Context, arg UpdateAccountDetailByAccountIDParams) (AccountDetail, error) {
+	row := q.db.QueryRow(ctx, updateAccountDetailByAccountID,
 		arg.AccountID,
 		arg.Type,
 		arg.Value,
 		arg.Country,
 		arg.BankName,
 	)
-	return err
+	var i AccountDetail
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Type,
+		&i.Value,
+		&i.Country,
+		&i.BankName,
+		&i.CreatedAt,
+	)
+	return i, err
 }

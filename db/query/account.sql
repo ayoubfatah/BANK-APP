@@ -97,3 +97,14 @@ ORDER BY id DESC
 LIMIT sqlc.arg('limit')
 OFFSET sqlc.arg('offset');
  
+
+ 
+
+
+-- name: GetAccountDetailsWithUserID :one
+SELECT
+    ad.*,
+    a.user_id
+FROM account_details ad
+INNER JOIN accounts a ON a.id = ad.account_id
+WHERE a.id = $1;  

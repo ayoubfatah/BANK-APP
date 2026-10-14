@@ -11,3 +11,5 @@ func (server *Server) registerAdminCurrencyRoutes(admin gin.IRoutes) {
 	admin.GET("/currencies", server.listAllCurrencies)
 	admin.PATCH("/currencies/:code", server.setCurrencyActive)
 }
+
+

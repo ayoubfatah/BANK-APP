@@ -201,6 +201,42 @@ func (q *Queries) GetAccountByUserAndCurrency(ctx context.Context, arg GetAccoun
 	return i, err
 }
 
+const getAccountDetailsWithUserID = `-- name: GetAccountDetailsWithUserID :one
+SELECT
+    ad.id, ad.account_id, ad.type, ad.value, ad.country, ad.bank_name, ad.created_at,
+    a.user_id
+FROM account_details ad
+INNER JOIN accounts a ON a.id = ad.account_id
+WHERE a.id = $1
+`
+
+type GetAccountDetailsWithUserIDRow struct {
+	ID        int64              `json:"id"`
+	AccountID int64              `json:"account_id"`
+	Type      string             `json:"type"`
+	Value     string             `json:"value"`
+	Country   pgtype.Text        `json:"country"`
+	BankName  pgtype.Text        `json:"bank_name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UserID    int64              `json:"user_id"`
+}
+
+func (q *Queries) GetAccountDetailsWithUserID(ctx context.Context, id int64) (GetAccountDetailsWithUserIDRow, error) {
+	row := q.db.QueryRow(ctx, getAccountDetailsWithUserID, id)
+	var i GetAccountDetailsWithUserIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Type,
+		&i.Value,
+		&i.Country,
+		&i.BankName,
+		&i.CreatedAt,
+		&i.UserID,
+	)
+	return i, err
+}
+
 const listAccountsAdmin = `-- name: ListAccountsAdmin :many
 SELECT id, user_id, currency, balance, status, created_at, updated_at, freezed_by, freezed_at
 FROM accounts
