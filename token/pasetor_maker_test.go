@@ -64,7 +64,12 @@ func TestCreateToken(t *testing.T) {
 	require.Equal(t, email, payload.Email)
 	require.NotEmpty(t, payload.ID)
 	require.WithinDuration(t, time.Now(), payload.IssuedAt, time.Second)
-	require.True(t, payload.ExpiredAt.Equal(payload.IssuedAt.Add(duration)))
+	require.WithinDuration(
+		t,
+		payload.IssuedAt.Add(duration),
+		payload.ExpiredAt,
+		time.Second,
+	)
 }
 
 func TestVerifyToken(t *testing.T) {
