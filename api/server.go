@@ -59,6 +59,7 @@ func (server *Server) setupRouter() {
 	server.registerAdminKYCRoutes(admin)
 	server.registerAdminCurrencyRoutes(admin)
 	server.registerAdminAccountRoutes(admin)
+	server.registerAdminAccountDetailsRoutes(admin)
 
 	server.router = router
 }

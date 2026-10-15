@@ -126,13 +126,10 @@ func TestUpdateAccountDetail(t *testing.T) {
 
 	detail := createRandomAccountDetail(t, account.ID)
 
-	newAccount := createRandomAccount(t)
-
 	arg := UpdateAccountDetailParams{
-		ID:        detail.ID,
-		AccountID: newAccount.ID,
-		Type:      "ACCOUNT_NUMBER",
-		Value:     "9876543210",
+		ID:    detail.ID,
+		Type:  "ACCOUNT_NUMBER",
+		Value: "9876543210",
 		Country: pgtype.Text{
 			String: "FR",
 			Valid:  true,
@@ -158,7 +155,6 @@ func TestUpdateAccountDetail(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, arg.ID, updated.ID)
-	require.Equal(t, arg.AccountID, updated.AccountID)
 	require.Equal(t, arg.Type, updated.Type)
 	require.Equal(t, arg.Value, updated.Value)
 

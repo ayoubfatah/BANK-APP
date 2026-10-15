@@ -169,6 +169,8 @@ CREATE TABLE "beneficiaries" (
   "iban" varchar,
 
   "bic" varchar,
+  
+  "routing_number" varchar,
 
   "bank_name" varchar,
 

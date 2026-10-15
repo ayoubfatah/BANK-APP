@@ -15,24 +15,37 @@ const createBeneficiary = `-- name: CreateBeneficiary :one
 INSERT INTO beneficiaries (
     user_id,
     name,
+    nickname,
     account_number,
     iban,
     bic,
+    routing_number,
     bank_name,
     country,
     currency
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10
 )
-RETURNING id, user_id, name, account_number, iban, bic, bank_name, country, currency, created_at, updated_at
+RETURNING id, user_id, name, account_number, iban, bic, routing_number, bank_name, country, currency, created_at, updated_at, nickname, deleted_at
 `
 
 type CreateBeneficiaryParams struct {
 	UserID        int64       `json:"user_id"`
 	Name          string      `json:"name"`
+	Nickname      pgtype.Text `json:"nickname"`
 	AccountNumber pgtype.Text `json:"account_number"`
 	Iban          pgtype.Text `json:"iban"`
 	Bic           pgtype.Text `json:"bic"`
+	RoutingNumber pgtype.Text `json:"routing_number"`
 	BankName      pgtype.Text `json:"bank_name"`
 	Country       string      `json:"country"`
 	Currency      pgtype.Text `json:"currency"`
@@ -42,9 +55,11 @@ func (q *Queries) CreateBeneficiary(ctx context.Context, arg CreateBeneficiaryPa
 	row := q.db.QueryRow(ctx, createBeneficiary,
 		arg.UserID,
 		arg.Name,
+		arg.Nickname,
 		arg.AccountNumber,
 		arg.Iban,
 		arg.Bic,
+		arg.RoutingNumber,
 		arg.BankName,
 		arg.Country,
 		arg.Currency,
@@ -57,19 +72,25 @@ func (q *Queries) CreateBeneficiary(ctx context.Context, arg CreateBeneficiaryPa
 		&i.AccountNumber,
 		&i.Iban,
 		&i.Bic,
+		&i.RoutingNumber,
 		&i.BankName,
 		&i.Country,
 		&i.Currency,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Nickname,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
-const deleteBeneficiary = `-- name: DeleteBeneficiary :exec
-DELETE FROM beneficiaries
+const deleteBeneficiary = `-- name: DeleteBeneficiary :execrows
+UPDATE beneficiaries
+SET deleted_at = NOW(),
+    updated_at = NOW()
 WHERE id = $1
   AND user_id = $2
+  AND deleted_at IS NULL
 `
 
 type DeleteBeneficiaryParams struct {
@@ -77,16 +98,20 @@ type DeleteBeneficiaryParams struct {
 	UserID int64 `json:"user_id"`
 }
 
-func (q *Queries) DeleteBeneficiary(ctx context.Context, arg DeleteBeneficiaryParams) error {
-	_, err := q.db.Exec(ctx, deleteBeneficiary, arg.ID, arg.UserID)
-	return err
+func (q *Queries) DeleteBeneficiary(ctx context.Context, arg DeleteBeneficiaryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteBeneficiary, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getBeneficiary = `-- name: GetBeneficiary :one
-SELECT id, user_id, name, account_number, iban, bic, bank_name, country, currency, created_at, updated_at
+SELECT id, user_id, name, account_number, iban, bic, routing_number, bank_name, country, currency, created_at, updated_at, nickname, deleted_at
 FROM beneficiaries
 WHERE id = $1
   AND user_id = $2
+  AND deleted_at IS NULL
 LIMIT 1
 `
 
@@ -105,24 +130,41 @@ func (q *Queries) GetBeneficiary(ctx context.Context, arg GetBeneficiaryParams) 
 		&i.AccountNumber,
 		&i.Iban,
 		&i.Bic,
+		&i.RoutingNumber,
 		&i.BankName,
 		&i.Country,
 		&i.Currency,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Nickname,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const listBeneficiariesByUserID = `-- name: ListBeneficiariesByUserID :many
-SELECT id, user_id, name, account_number, iban, bic, bank_name, country, currency, created_at, updated_at
+SELECT id, user_id, name, account_number, iban, bic, routing_number, bank_name, country, currency, created_at, updated_at, nickname, deleted_at
 FROM beneficiaries
 WHERE user_id = $1
+  AND deleted_at IS NULL
+  AND (
+    $2::text IS NULL
+    OR name           ILIKE '%' || $2::text || '%'
+    OR nickname       ILIKE '%' || $2::text || '%'
+    OR bank_name      ILIKE '%' || $2::text || '%'
+    OR iban           ILIKE '%' || $2::text || '%'
+    OR account_number ILIKE '%' || $2::text || '%'
+  )
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListBeneficiariesByUserID(ctx context.Context, userID int64) ([]Beneficiary, error) {
-	rows, err := q.db.Query(ctx, listBeneficiariesByUserID, userID)
+type ListBeneficiariesByUserIDParams struct {
+	UserID int64       `json:"user_id"`
+	Search pgtype.Text `json:"search"`
+}
+
+func (q *Queries) ListBeneficiariesByUserID(ctx context.Context, arg ListBeneficiariesByUserIDParams) ([]Beneficiary, error) {
+	rows, err := q.db.Query(ctx, listBeneficiariesByUserID, arg.UserID, arg.Search)
 	if err != nil {
 		return nil, err
 	}
@@ -137,11 +179,14 @@ func (q *Queries) ListBeneficiariesByUserID(ctx context.Context, userID int64) (
 			&i.AccountNumber,
 			&i.Iban,
 			&i.Bic,
+			&i.RoutingNumber,
 			&i.BankName,
 			&i.Country,
 			&i.Currency,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Nickname,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -156,41 +201,48 @@ func (q *Queries) ListBeneficiariesByUserID(ctx context.Context, userID int64) (
 const updateBeneficiary = `-- name: UpdateBeneficiary :one
 UPDATE beneficiaries
 SET
-    name = $2,
-    account_number = $3,
-    iban = $4,
-    bic = $5,
-    bank_name = $6,
-    country = $7,
-    currency = $8,
-    updated_at = NOW()
-WHERE id = $1
-  AND user_id = $9
-RETURNING id, user_id, name, account_number, iban, bic, bank_name, country, currency, created_at, updated_at
+    name           = COALESCE($1, name),
+    nickname       = COALESCE($2, nickname),
+    account_number = COALESCE($3, account_number),
+    iban           = COALESCE($4, iban),
+    bic            = COALESCE($5, bic),
+    routing_number = COALESCE($6, routing_number),
+    bank_name      = COALESCE($7, bank_name),
+    country        = COALESCE($8, country),
+    currency       = COALESCE($9, currency),
+    updated_at     = NOW()
+WHERE id = $10
+  AND user_id = $11
+  AND deleted_at IS NULL
+RETURNING id, user_id, name, account_number, iban, bic, routing_number, bank_name, country, currency, created_at, updated_at, nickname, deleted_at
 `
 
 type UpdateBeneficiaryParams struct {
-	ID            int64       `json:"id"`
-	Name          string      `json:"name"`
+	Name          pgtype.Text `json:"name"`
+	Nickname      pgtype.Text `json:"nickname"`
 	AccountNumber pgtype.Text `json:"account_number"`
 	Iban          pgtype.Text `json:"iban"`
 	Bic           pgtype.Text `json:"bic"`
+	RoutingNumber pgtype.Text `json:"routing_number"`
 	BankName      pgtype.Text `json:"bank_name"`
-	Country       string      `json:"country"`
+	Country       pgtype.Text `json:"country"`
 	Currency      pgtype.Text `json:"currency"`
+	ID            int64       `json:"id"`
 	UserID        int64       `json:"user_id"`
 }
 
 func (q *Queries) UpdateBeneficiary(ctx context.Context, arg UpdateBeneficiaryParams) (Beneficiary, error) {
 	row := q.db.QueryRow(ctx, updateBeneficiary,
-		arg.ID,
 		arg.Name,
+		arg.Nickname,
 		arg.AccountNumber,
 		arg.Iban,
 		arg.Bic,
+		arg.RoutingNumber,
 		arg.BankName,
 		arg.Country,
 		arg.Currency,
+		arg.ID,
 		arg.UserID,
 	)
 	var i Beneficiary
@@ -201,11 +253,14 @@ func (q *Queries) UpdateBeneficiary(ctx context.Context, arg UpdateBeneficiaryPa
 		&i.AccountNumber,
 		&i.Iban,
 		&i.Bic,
+		&i.RoutingNumber,
 		&i.BankName,
 		&i.Country,
 		&i.Currency,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Nickname,
+		&i.DeletedAt,
 	)
 	return i, err
 }

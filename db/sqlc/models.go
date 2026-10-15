@@ -62,11 +62,14 @@ type Beneficiary struct {
 	AccountNumber pgtype.Text        `json:"account_number"`
 	Iban          pgtype.Text        `json:"iban"`
 	Bic           pgtype.Text        `json:"bic"`
+	RoutingNumber pgtype.Text        `json:"routing_number"`
 	BankName      pgtype.Text        `json:"bank_name"`
 	Country       string             `json:"country"`
 	Currency      pgtype.Text        `json:"currency"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	Nickname      pgtype.Text        `json:"nickname"`
+	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type Business struct {
