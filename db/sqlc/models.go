@@ -178,6 +178,20 @@ type Fee struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type FeeRule struct {
+	ID            int64              `json:"id"`
+	OperationType string             `json:"operation_type"`
+	Currency      string             `json:"currency"`
+	FeeType       string             `json:"fee_type"`
+	FlatAmount    int64              `json:"flat_amount"`
+	PercentageBps int32              `json:"percentage_bps"`
+	MinFee        int64              `json:"min_fee"`
+	MaxFee        pgtype.Int8        `json:"max_fee"`
+	IsActive      bool               `json:"is_active"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
 type IncomingPayment struct {
 	ID              int64       `json:"id"`
 	AccountID       int64       `json:"account_id"`

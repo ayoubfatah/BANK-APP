@@ -90,7 +90,19 @@ func (store *Store) CreateTransferTransaction(ctx context.Context, args CreateTr
 			return ErrCurrencyMismatch
 		}
 
-		if fromAccount.Balance < args.Amount {
+		// fee for this transfer, 0 if there is no active rule
+		var feeAmount int64
+		feeRule, err := q.GetActiveFeeRule(ctx, db.GetActiveFeeRuleParams{
+			OperationType: "transfer",
+			Currency:      fromAccount.Currency,
+		})
+		if err == nil {
+			feeAmount = CalculateFee(feeRule, args.Amount)
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+
+		if fromAccount.Balance < args.Amount+feeAmount {
 			return ErrInsufficientFunds
 		}
 
@@ -125,12 +137,12 @@ func (store *Store) CreateTransferTransaction(ctx context.Context, args CreateTr
 			return err
 		}
 
-		//  remove money from sender
+		//  remove money (and fee) from sender
 
 		_, err = q.SubtractFromAccountBalance(
 			ctx,
 			db.SubtractFromAccountBalanceParams{
-				Balance: args.Amount,
+				Balance: args.Amount + feeAmount,
 				ID:      fromAccount.ID,
 			},
 		)
@@ -191,6 +203,41 @@ func (store *Store) CreateTransferTransaction(ctx context.Context, args CreateTr
 
 		if err != nil {
 			return err
+		}
+
+		// fee entry for sender and fee record
+		if feeAmount > 0 {
+			feeDescription := fmt.Sprintf("Fee for transfer to account %d", toAccount.ID)
+
+			_, err = q.CreateEntry(
+				ctx,
+				db.CreateEntryParams{
+					AccountID: fromAccount.ID,
+					Amount:    feeAmount,
+					Currency:  fromAccount.Currency,
+					Type:      "fee",
+					Description: pgtype.Text{
+						String: feeDescription,
+						Valid:  true,
+					},
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			_, err = q.CreateFee(
+				ctx,
+				db.CreateFeeParams{
+					TransferID: pgtype.Int8{Int64: transfer.ID, Valid: true},
+					Type:       "transfer",
+					Amount:     feeAmount,
+					Currency:   fromAccount.Currency,
+				},
+			)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
