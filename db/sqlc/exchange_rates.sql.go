@@ -53,6 +53,7 @@ SELECT id, base_currency, quote_currency, rate, source
 FROM exchange_rates
 WHERE base_currency = $1
   AND quote_currency = $2
+ORDER BY id DESC
 LIMIT 1
 `
 
@@ -72,6 +73,84 @@ func (q *Queries) GetExchangeRate(ctx context.Context, arg GetExchangeRateParams
 		&i.Source,
 	)
 	return i, err
+}
+
+const getLatestExchangeRate = `-- name: GetLatestExchangeRate :one
+SELECT id, base_currency, quote_currency, rate
+FROM exchange_rates
+WHERE base_currency = $1
+  AND quote_currency = $2
+ORDER BY id DESC
+LIMIT 1
+`
+
+type GetLatestExchangeRateParams struct {
+	BaseCurrency  string `json:"base_currency"`
+	QuoteCurrency string `json:"quote_currency"`
+}
+
+type GetLatestExchangeRateRow struct {
+	ID            int64          `json:"id"`
+	BaseCurrency  string         `json:"base_currency"`
+	QuoteCurrency string         `json:"quote_currency"`
+	Rate          pgtype.Numeric `json:"rate"`
+}
+
+func (q *Queries) GetLatestExchangeRate(ctx context.Context, arg GetLatestExchangeRateParams) (GetLatestExchangeRateRow, error) {
+	row := q.db.QueryRow(ctx, getLatestExchangeRate, arg.BaseCurrency, arg.QuoteCurrency)
+	var i GetLatestExchangeRateRow
+	err := row.Scan(
+		&i.ID,
+		&i.BaseCurrency,
+		&i.QuoteCurrency,
+		&i.Rate,
+	)
+	return i, err
+}
+
+const listExchangeRateHistory = `-- name: ListExchangeRateHistory :many
+SELECT id, base_currency, quote_currency, rate
+FROM exchange_rates
+WHERE base_currency = $1
+  AND quote_currency = $2
+ORDER BY id ASC
+`
+
+type ListExchangeRateHistoryParams struct {
+	BaseCurrency  string `json:"base_currency"`
+	QuoteCurrency string `json:"quote_currency"`
+}
+
+type ListExchangeRateHistoryRow struct {
+	ID            int64          `json:"id"`
+	BaseCurrency  string         `json:"base_currency"`
+	QuoteCurrency string         `json:"quote_currency"`
+	Rate          pgtype.Numeric `json:"rate"`
+}
+
+func (q *Queries) ListExchangeRateHistory(ctx context.Context, arg ListExchangeRateHistoryParams) ([]ListExchangeRateHistoryRow, error) {
+	rows, err := q.db.Query(ctx, listExchangeRateHistory, arg.BaseCurrency, arg.QuoteCurrency)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListExchangeRateHistoryRow{}
+	for rows.Next() {
+		var i ListExchangeRateHistoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BaseCurrency,
+			&i.QuoteCurrency,
+			&i.Rate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listExchangeRates = `-- name: ListExchangeRates :many
@@ -111,6 +190,117 @@ func (q *Queries) ListExchangeRates(ctx context.Context, arg ListExchangeRatesPa
 			&i.QuoteCurrency,
 			&i.Rate,
 			&i.Source,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExchangeRatesAdmin = `-- name: ListExchangeRatesAdmin :many
+SELECT id, base_currency, quote_currency, rate
+FROM exchange_rates
+WHERE (
+    $1::text IS NULL
+    OR base_currency = $1
+)
+AND (
+    $2::text IS NULL
+    OR quote_currency = $2
+)
+ORDER BY id DESC
+LIMIT $4
+OFFSET $3
+`
+
+type ListExchangeRatesAdminParams struct {
+	BaseCurrency  pgtype.Text `json:"base_currency"`
+	QuoteCurrency pgtype.Text `json:"quote_currency"`
+	Offset        int32       `json:"offset"`
+	Limit         int32       `json:"limit"`
+}
+
+type ListExchangeRatesAdminRow struct {
+	ID            int64          `json:"id"`
+	BaseCurrency  string         `json:"base_currency"`
+	QuoteCurrency string         `json:"quote_currency"`
+	Rate          pgtype.Numeric `json:"rate"`
+}
+
+func (q *Queries) ListExchangeRatesAdmin(ctx context.Context, arg ListExchangeRatesAdminParams) ([]ListExchangeRatesAdminRow, error) {
+	rows, err := q.db.Query(ctx, listExchangeRatesAdmin,
+		arg.BaseCurrency,
+		arg.QuoteCurrency,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListExchangeRatesAdminRow{}
+	for rows.Next() {
+		var i ListExchangeRatesAdminRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BaseCurrency,
+			&i.QuoteCurrency,
+			&i.Rate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLatestExchangeRates = `-- name: ListLatestExchangeRates :many
+SELECT DISTINCT ON (er.base_currency, er.quote_currency)
+    er.id,
+    er.base_currency,
+    er.quote_currency,
+    er.rate
+FROM exchange_rates er
+JOIN currencies f
+    ON f.code = er.base_currency
+   AND f.is_active
+JOIN currencies t
+    ON t.code = er.quote_currency
+   AND t.is_active
+ORDER BY
+    er.base_currency,
+    er.quote_currency,
+    er.id DESC
+`
+
+type ListLatestExchangeRatesRow struct {
+	ID            int64          `json:"id"`
+	BaseCurrency  string         `json:"base_currency"`
+	QuoteCurrency string         `json:"quote_currency"`
+	Rate          pgtype.Numeric `json:"rate"`
+}
+
+func (q *Queries) ListLatestExchangeRates(ctx context.Context) ([]ListLatestExchangeRatesRow, error) {
+	rows, err := q.db.Query(ctx, listLatestExchangeRates)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListLatestExchangeRatesRow{}
+	for rows.Next() {
+		var i ListLatestExchangeRatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BaseCurrency,
+			&i.QuoteCurrency,
+			&i.Rate,
 		); err != nil {
 			return nil, err
 		}

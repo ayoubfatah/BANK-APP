@@ -3,100 +3,76 @@ package db
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
 
+func createTestEntry(
+	t *testing.T,
+	accountID int64,
+	amount int64,
+	entryType string,
+	referenceID pgtype.Int8,
+) Entry {
+	t.Helper()
+
+	entry, err := testQueries.CreateEntry(context.Background(), CreateEntryParams{
+		AccountID:   accountID,
+		Amount:      amount,
+		Currency:    "MAD",
+		Type:        entryType,
+		ReferenceID: referenceID,
+		Description: pgtype.Text{
+			String: "Test " + entryType,
+			Valid:  true,
+		},
+	})
+	require.NoError(t, err)
+
+	return entry
+}
+
 func TestCreateEntry(t *testing.T) {
 	account := createRandomAccount(t)
 
-	arg := CreateEntryParams{
-		AccountID: account.ID,
-		Amount:    5000,
-		Currency:  "MAD",
-		Type:      "deposit",
-		Description: pgtype.Text{
-			String: "Initial deposit",
-			Valid:  true,
-		},
-	}
+	entry := createTestEntry(t, account.ID, 5000, "deposit", pgtype.Int8{})
 
-	entry, err := testQueries.CreateEntry(context.Background(), arg)
-
-	require.NoError(t, err)
 	require.NotZero(t, entry.ID)
 	require.Equal(t, account.ID, entry.AccountID)
 	require.Equal(t, int64(5000), entry.Amount)
 	require.Equal(t, "MAD", entry.Currency)
 	require.Equal(t, "deposit", entry.Type)
-	require.Equal(t, "Initial deposit", entry.Description.String)
-	require.NotZero(t, entry.CreatedAt)
+	require.Equal(t, "Test deposit", entry.Description.String)
+	require.False(t, entry.ReferenceID.Valid)
+	require.True(t, entry.CreatedAt.Valid)
 }
 
 func TestGetEntry(t *testing.T) {
 	account := createRandomAccount(t)
+	created := createTestEntry(t, account.ID, 5000, "deposit", pgtype.Int8{})
 
-	arg := CreateEntryParams{
-		AccountID: account.ID,
-		Amount:    5000,
-		Currency:  "MAD",
-		Type:      "deposit",
-		Description: pgtype.Text{
-			String: "Initial deposit",
-			Valid:  true,
-		},
-	}
-
-	createdEntry, err := testQueries.CreateEntry(
-		context.Background(),
-		arg,
-	)
+	entry, err := testQueries.GetEntry(context.Background(), created.ID)
 
 	require.NoError(t, err)
-
-	entry, err := testQueries.GetEntry(
-		context.Background(),
-		createdEntry.ID,
-	)
-
-	require.NoError(t, err)
-
-	require.Equal(t, createdEntry.ID, entry.ID)
-	require.Equal(t, createdEntry.AccountID, entry.AccountID)
-	require.Equal(t, createdEntry.Amount, entry.Amount)
-	require.Equal(t, createdEntry.Currency, entry.Currency)
-	require.Equal(t, createdEntry.Type, entry.Type)
-	require.Equal(t, createdEntry.Description, entry.Description)
+	require.Equal(t, created.ID, entry.ID)
+	require.Equal(t, created.AccountID, entry.AccountID)
+	require.Equal(t, created.Amount, entry.Amount)
+	require.Equal(t, created.Currency, entry.Currency)
+	require.Equal(t, created.Type, entry.Type)
+	require.Equal(t, created.Description, entry.Description)
+	require.Equal(t, created.ReferenceID, entry.ReferenceID)
 }
 
 func TestListEntriesByAccountID(t *testing.T) {
 	account := createRandomAccount(t)
 
 	for i := 0; i < 5; i++ {
-		arg := CreateEntryParams{
-			AccountID: account.ID,
-			Amount:    int64((i + 1) * 1000),
-			Currency:  "MAD",
-			Type:      "deposit",
-			Description: pgtype.Text{
-				String: "Test deposit",
-				Valid:  true,
-			},
-		}
-
-		_, err := testQueries.CreateEntry(
-			context.Background(),
-			arg,
-		)
-
-		require.NoError(t, err)
+		createTestEntry(t, account.ID, int64((i+1)*1000), "deposit", pgtype.Int8{})
 	}
 
-	entries, err := testQueries.ListEntriesByAccountID(
-		context.Background(),
-		account.ID,
-	)
+	entries, err := testQueries.ListEntriesByAccountID(context.Background(), account.ID)
 
 	require.NoError(t, err)
 	require.Len(t, entries, 5)
@@ -106,249 +82,149 @@ func TestListEntriesByAccountID(t *testing.T) {
 	}
 }
 
-func TestEntriesBelongToCorrectAccount(t *testing.T) {
-	account1 := createRandomAccount(t)
-	account2 := createRandomAccount(t)
-
-	arg1 := CreateEntryParams{
-		AccountID: account1.ID,
-		Amount:    1000,
-		Currency:  "MAD",
-		Type:      "deposit",
-		Description: pgtype.Text{
-			String: "Account 1 entry",
-			Valid:  true,
-		},
-	}
-
-	arg2 := CreateEntryParams{
-		AccountID: account2.ID,
-		Amount:    2000,
-		Currency:  "MAD",
-		Type:      "deposit",
-		Description: pgtype.Text{
-			String: "Account 2 entry",
-			Valid:  true,
-		},
-	}
-
-	entry1, err := testQueries.CreateEntry(
-		context.Background(),
-		arg1,
-	)
-
-	require.NoError(t, err)
-
-	entry2, err := testQueries.CreateEntry(
-		context.Background(),
-		arg2,
-	)
-
-	require.NoError(t, err)
-
-	require.Equal(t, account1.ID, entry1.AccountID)
-	require.Equal(t, account2.ID, entry2.AccountID)
-}
-
-func TestListEntriesByAccountIDWithPagination(t *testing.T) {
+func TestListEntriesByAccountIDFiltered(t *testing.T) {
 	account := createRandomAccount(t)
 
-	for i := 0; i < 10; i++ {
-		arg := CreateEntryParams{
-			AccountID: account.ID,
-			Amount:    int64((i + 1) * 1000),
-			Currency:  "MAD",
-			Type:      "deposit",
-			Description: pgtype.Text{
-				String: "Pagination test",
-				Valid:  true,
-			},
-		}
+	createTestEntry(t, account.ID, 1000, "deposit", pgtype.Int8{})
+	createTestEntry(t, account.ID, 5000, "deposit", pgtype.Int8{})
+	createTestEntry(t, account.ID, 3000, "withdrawal", pgtype.Int8{})
+	createTestEntry(t, account.ID, 500, "fee", pgtype.Int8{})
 
-		_, err := testQueries.CreateEntry(
-			context.Background(),
-			arg,
-		)
-
-		require.NoError(t, err)
-	}
-
-	firstPage, err := testQueries.ListEntriesByAccountIDWithPagination(
+	entries, err := testQueries.ListEntriesByAccountIDFiltered(
 		context.Background(),
-		ListEntriesByAccountIDWithPaginationParams{
+		ListEntriesByAccountIDFilteredParams{
 			AccountID: account.ID,
-			Limit:     3,
+			FromDate:  pgtype.Timestamptz{},
+			ToDate:    pgtype.Timestamptz{},
+			EntryType: pgtype.Text{String: "deposit", Valid: true},
+			MinAmount: pgtype.Int8{Int64: 1000, Valid: true},
+			MaxAmount: pgtype.Int8{Int64: 4000, Valid: true},
+			PageSize:  20,
 			Offset:    0,
 		},
 	)
 
 	require.NoError(t, err)
-	require.Len(t, firstPage, 3)
+	require.Len(t, entries, 1)
+	require.Equal(t, int64(1000), entries[0].Amount)
+	require.Equal(t, "deposit", entries[0].Type)
+}
 
-	secondPage, err := testQueries.ListEntriesByAccountIDWithPagination(
+func TestListEntriesByAccountIDFilteredWithNoFilters(t *testing.T) {
+	account := createRandomAccount(t)
+
+	for i := 0; i < 3; i++ {
+		createTestEntry(t, account.ID, int64((i+1)*1000), "deposit", pgtype.Int8{})
+	}
+
+	entries, err := testQueries.ListEntriesByAccountIDFiltered(
 		context.Background(),
-		ListEntriesByAccountIDWithPaginationParams{
+		ListEntriesByAccountIDFilteredParams{
 			AccountID: account.ID,
-			Limit:     3,
-			Offset:    3,
+			FromDate:  pgtype.Timestamptz{},
+			ToDate:    pgtype.Timestamptz{},
+			EntryType: pgtype.Text{},
+			MinAmount: pgtype.Int8{},
+			MaxAmount: pgtype.Int8{},
+			PageSize:  20,
+			Offset:    0,
 		},
 	)
 
 	require.NoError(t, err)
-	require.Len(t, secondPage, 3)
-
-	require.NotEqual(t, firstPage[0].ID, secondPage[0].ID)
+	require.Len(t, entries, 3)
 }
 
-func TestEntriesOrderedByCreatedAt(t *testing.T) {
+func TestListEntriesByAccountIDFilteredByDate(t *testing.T) {
 	account := createRandomAccount(t)
+	created := createTestEntry(t, account.ID, 1000, "deposit", pgtype.Int8{})
 
-	for i := 0; i < 5; i++ {
-		arg := CreateEntryParams{
-			AccountID: account.ID,
-			Amount:    int64((i + 1) * 1000),
-			Currency:  "MAD",
-			Type:      "deposit",
-			Description: pgtype.Text{
-				String: "Ordering test",
-				Valid:  true,
-			},
-		}
-
-		_, err := testQueries.CreateEntry(
-			context.Background(),
-			arg,
-		)
-
-		require.NoError(t, err)
-	}
-
-	entries, err := testQueries.ListEntriesByAccountID(
+	entries, err := testQueries.ListEntriesByAccountIDFiltered(
 		context.Background(),
-		account.ID,
+		ListEntriesByAccountIDFilteredParams{
+			AccountID: account.ID,
+			FromDate: pgtype.Timestamptz{
+				Time:  created.CreatedAt.Time.Add(-time.Minute),
+				Valid: true,
+			},
+			ToDate: pgtype.Timestamptz{
+				Time:  created.CreatedAt.Time.Add(time.Minute),
+				Valid: true,
+			},
+			EntryType: pgtype.Text{},
+			MinAmount: pgtype.Int8{},
+			MaxAmount: pgtype.Int8{},
+			PageSize:  20,
+			Offset:    0,
+		},
 	)
 
 	require.NoError(t, err)
-	require.Len(t, entries, 5)
-
-	for i := 0; i < len(entries)-1; i++ {
-		require.True(
-			t,
-			entries[i].CreatedAt.Time.After(entries[i+1].CreatedAt.Time) ||
-				entries[i].CreatedAt.Time.Equal(entries[i+1].CreatedAt.Time),
-		)
-	}
+	require.Len(t, entries, 1)
+	require.Equal(t, created.ID, entries[0].ID)
 }
 
-func TestDifferentAccountEntriesDoNotMix(t *testing.T) {
+func TestGetEntryByAccountID(t *testing.T) {
+	account := createRandomAccount(t)
+	otherAccount := createRandomAccount(t)
+
+	created := createTestEntry(t, account.ID, 2500, "deposit", pgtype.Int8{})
+
+	entry, err := testQueries.GetEntryByAccountID(
+		context.Background(),
+		GetEntryByAccountIDParams{
+			ID:        created.ID,
+			AccountID: account.ID,
+		},
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, created.ID, entry.ID)
+	require.Equal(t, account.ID, entry.AccountID)
+
+	_, err = testQueries.GetEntryByAccountID(
+		context.Background(),
+		GetEntryByAccountIDParams{
+			ID:        created.ID,
+			AccountID: otherAccount.ID,
+		},
+	)
+
+	require.Error(t, err)
+}
+
+func TestGetEntriesByReferenceID(t *testing.T) {
 	account1 := createRandomAccount(t)
 	account2 := createRandomAccount(t)
 
-	for i := 0; i < 2; i++ {
-		arg := CreateEntryParams{
-			AccountID: account1.ID,
-			Amount:    1000,
-			Currency:  "MAD",
-			Type:      "deposit",
-			Description: pgtype.Text{
-				String: "Account 1",
-				Valid:  true,
-			},
-		}
+	referenceID := pgtype.Int8{Int64: 12345, Valid: true}
 
-		_, err := testQueries.CreateEntry(
-			context.Background(),
-			arg,
-		)
+	entry1 := createTestEntry(t, account1.ID, 5000, "withdrawal", referenceID)
+	entry2 := createTestEntry(t, account2.ID, 5000, "deposit", referenceID)
+	createTestEntry(t, account1.ID, 1000, "deposit", pgtype.Int8{})
 
-		require.NoError(t, err)
-	}
-
-	arg := CreateEntryParams{
-		AccountID: account2.ID,
-		Amount:    2000,
-		Currency:  "MAD",
-		Type:      "deposit",
-		Description: pgtype.Text{
-			String: "Account 2",
-			Valid:  true,
-		},
-	}
-
-	_, err := testQueries.CreateEntry(
-		context.Background(),
-		arg,
-	)
+	entries, err := testQueries.GetEntriesByReferenceID(context.Background(), referenceID)
 
 	require.NoError(t, err)
+	require.Len(t, entries, 2)
 
-	account1Entries, err := testQueries.ListEntriesByAccountID(
-		context.Background(),
-		account1.ID,
-	)
-
-	require.NoError(t, err)
-	require.Len(t, account1Entries, 2)
-
-	for _, entry := range account1Entries {
-		require.Equal(t, account1.ID, entry.AccountID)
-		require.NotEqual(t, account2.ID, entry.AccountID)
+	ids := map[int64]bool{}
+	for _, entry := range entries {
+		require.True(t, entry.ReferenceID.Valid)
+		require.Equal(t, referenceID.Int64, entry.ReferenceID.Int64)
+		ids[entry.ID] = true
 	}
 
-	account2Entries, err := testQueries.ListEntriesByAccountID(
-		context.Background(),
-		account2.ID,
-	)
-
-	require.NoError(t, err)
-	require.Len(t, account2Entries, 1)
-	require.Equal(t, account2.ID, account2Entries[0].AccountID)
+	require.True(t, ids[entry1.ID])
+	require.True(t, ids[entry2.ID])
 }
 
-func TestGetAccountBalance(t *testing.T) {
+func TestGetAccountBalanceFromEntries(t *testing.T) {
 	account := createRandomAccount(t)
 
-	entries := []CreateEntryParams{
-		{
-			AccountID: account.ID,
-			Amount:    10000,
-			Currency:  "MAD",
-			Type:      "deposit",
-			Description: pgtype.Text{
-				String: "Deposit",
-				Valid:  true,
-			},
-		},
-		{
-			AccountID: account.ID,
-			Amount:    3000,
-			Currency:  "MAD",
-			Type:      "withdrawal",
-			Description: pgtype.Text{
-				String: "Withdrawal",
-				Valid:  true,
-			},
-		},
-		{
-			AccountID: account.ID,
-			Amount:    2000,
-			Currency:  "MAD",
-			Type:      "fee",
-			Description: pgtype.Text{
-				String: "Fee",
-				Valid:  true,
-			},
-		},
-	}
-
-	for _, arg := range entries {
-		_, err := testQueries.CreateEntry(
-			context.Background(),
-			arg,
-		)
-
-		require.NoError(t, err)
-	}
+	createTestEntry(t, account.ID, 10000, "deposit", pgtype.Int8{})
+	createTestEntry(t, account.ID, 3000, "withdrawal", pgtype.Int8{})
+	createTestEntry(t, account.ID, 2000, "fee", pgtype.Int8{})
 
 	balance, err := testQueries.GetAccountBalanceFromEntries(
 		context.Background(),
@@ -357,4 +233,29 @@ func TestGetAccountBalance(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, int64(5000), balance)
+}
+
+func TestGetAccountBalanceFromEntriesWithoutEntries(t *testing.T) {
+	account := createRandomAccount(t)
+
+	balance, err := testQueries.GetAccountBalanceFromEntries(
+		context.Background(),
+		account.ID,
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, int64(0), balance)
+}
+
+func TestGetAccountOwnerAndBalance(t *testing.T) {
+	account := createRandomAccount(t)
+
+	result, err := testQueries.GetAccountOwnerAndBalance(
+		context.Background(),
+		account.ID,
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, account.ID, result.ID)
+	require.Equal(t, account.UserID, result.UserID)
 }

@@ -20,7 +20,12 @@ INSERT INTO entries (
     reference_id,
     description
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
 )
 RETURNING id, account_id, amount, currency, type, reference_id, description, created_at
 `
@@ -77,6 +82,26 @@ func (q *Queries) GetAccountBalanceFromEntries(ctx context.Context, accountID in
 	var balance int64
 	err := row.Scan(&balance)
 	return balance, err
+}
+
+const getAccountOwnerAndBalance = `-- name: GetAccountOwnerAndBalance :one
+SELECT id, user_id, balance
+FROM accounts
+WHERE id = $1
+LIMIT 1
+`
+
+type GetAccountOwnerAndBalanceRow struct {
+	ID      int64 `json:"id"`
+	UserID  int64 `json:"user_id"`
+	Balance int64 `json:"balance"`
+}
+
+func (q *Queries) GetAccountOwnerAndBalance(ctx context.Context, id int64) (GetAccountOwnerAndBalanceRow, error) {
+	row := q.db.QueryRow(ctx, getAccountOwnerAndBalance, id)
+	var i GetAccountOwnerAndBalanceRow
+	err := row.Scan(&i.ID, &i.UserID, &i.Balance)
+	return i, err
 }
 
 const getEntriesByReferenceID = `-- name: GetEntriesByReferenceID :many
@@ -138,6 +163,51 @@ func (q *Queries) GetEntry(ctx context.Context, id int64) (Entry, error) {
 	return i, err
 }
 
+const getEntryByAccountID = `-- name: GetEntryByAccountID :one
+SELECT
+	e.id, e.account_id, e.amount, e.currency, e.type, e.reference_id, e.description, e.created_at , a.user_id
+FROM
+	entries e
+	JOIN accounts a ON e.account_id = a.id
+WHERE
+	a.id = $1 AND  e.id = $2
+LIMIT 1
+`
+
+type GetEntryByAccountIDParams struct {
+	AccountID int64 `json:"account_id"`
+	ID        int64 `json:"id"`
+}
+
+type GetEntryByAccountIDRow struct {
+	ID          int64              `json:"id"`
+	AccountID   int64              `json:"account_id"`
+	Amount      int64              `json:"amount"`
+	Currency    string             `json:"currency"`
+	Type        string             `json:"type"`
+	ReferenceID pgtype.Int8        `json:"reference_id"`
+	Description pgtype.Text        `json:"description"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UserID      int64              `json:"user_id"`
+}
+
+func (q *Queries) GetEntryByAccountID(ctx context.Context, arg GetEntryByAccountIDParams) (GetEntryByAccountIDRow, error) {
+	row := q.db.QueryRow(ctx, getEntryByAccountID, arg.AccountID, arg.ID)
+	var i GetEntryByAccountIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Amount,
+		&i.Currency,
+		&i.Type,
+		&i.ReferenceID,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UserID,
+	)
+	return i, err
+}
+
 const listEntriesByAccountID = `-- name: ListEntriesByAccountID :many
 SELECT id, account_id, amount, currency, type, reference_id, description, created_at
 FROM entries
@@ -174,23 +244,101 @@ func (q *Queries) ListEntriesByAccountID(ctx context.Context, accountID int64) (
 	return items, nil
 }
 
+const listEntriesByAccountIDFiltered = `-- name: ListEntriesByAccountIDFiltered :many
+SELECT id, account_id, amount, currency, type, reference_id, description, created_at
+FROM entries
+WHERE account_id = $1
+  AND (
+    $2::timestamptz IS NULL
+    OR created_at >= $2::timestamptz
+  )
+  AND (
+    $3::timestamptz IS NULL
+    OR created_at <= $3::timestamptz
+  )
+  AND (
+    $4::varchar IS NULL
+    OR type = $4::varchar
+  )
+  AND (
+    $5::bigint IS NULL
+    OR amount >= $5::bigint
+  )
+  AND (
+    $6::bigint IS NULL
+    OR amount <= $6::bigint
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $8
+OFFSET $7
+`
+
+type ListEntriesByAccountIDFilteredParams struct {
+	AccountID int64              `json:"account_id"`
+	FromDate  pgtype.Timestamptz `json:"from_date"`
+	ToDate    pgtype.Timestamptz `json:"to_date"`
+	EntryType pgtype.Text        `json:"entry_type"`
+	MinAmount pgtype.Int8        `json:"min_amount"`
+	MaxAmount pgtype.Int8        `json:"max_amount"`
+	Offset    int32              `json:"offset"`
+	PageSize  int32              `json:"page_size"`
+}
+
+func (q *Queries) ListEntriesByAccountIDFiltered(ctx context.Context, arg ListEntriesByAccountIDFilteredParams) ([]Entry, error) {
+	rows, err := q.db.Query(ctx, listEntriesByAccountIDFiltered,
+		arg.AccountID,
+		arg.FromDate,
+		arg.ToDate,
+		arg.EntryType,
+		arg.MinAmount,
+		arg.MaxAmount,
+		arg.Offset,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Entry{}
+	for rows.Next() {
+		var i Entry
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.Amount,
+			&i.Currency,
+			&i.Type,
+			&i.ReferenceID,
+			&i.Description,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEntriesByAccountIDWithPagination = `-- name: ListEntriesByAccountIDWithPagination :many
 SELECT id, account_id, amount, currency, type, reference_id, description, created_at
 FROM entries
 WHERE account_id = $1
 ORDER BY created_at DESC, id DESC
-LIMIT $2
-OFFSET $3
+LIMIT $3
+OFFSET $2
 `
 
 type ListEntriesByAccountIDWithPaginationParams struct {
 	AccountID int64 `json:"account_id"`
-	Limit     int32 `json:"limit"`
 	Offset    int32 `json:"offset"`
+	Limit     int32 `json:"limit"`
 }
 
 func (q *Queries) ListEntriesByAccountIDWithPagination(ctx context.Context, arg ListEntriesByAccountIDWithPaginationParams) ([]Entry, error) {
-	rows, err := q.db.Query(ctx, listEntriesByAccountIDWithPagination, arg.AccountID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listEntriesByAccountIDWithPagination, arg.AccountID, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

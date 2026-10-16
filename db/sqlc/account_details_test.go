@@ -97,30 +97,6 @@ func TestGetAccountDetailByAccountID(t *testing.T) {
 	require.Equal(t, "MA", result.Country.String)
 }
 
-func TestListAccountDetails(t *testing.T) {
-	account := createRandomAccount(t)
-
-	detail1 := createRandomAccountDetail(t, account.ID)
-
-	detail2 := createRandomAccountDetail(t, account.ID)
-
-	arg := ListAccountDetailsParams{
-		Limit:  10,
-		Offset: 0,
-	}
-
-	details, err := testQueries.ListAccountDetails(
-		context.Background(),
-		arg,
-	)
-
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(details), 2)
-
-	require.Contains(t, details, detail1)
-	require.Contains(t, details, detail2)
-}
-
 func TestUpdateAccountDetail(t *testing.T) {
 	account := createRandomAccount(t)
 

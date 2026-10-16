@@ -49,6 +49,7 @@ func (server *Server) setupRouter() {
 	server.registerAuthenticatedKYCRoutes(auth)
 	server.registerAuthenticatedAccountRoutes(auth)
 	server.registerPublicAccountDetailsRoutes(auth)
+	server.registerAuthenticatedEntriesRoutes(auth)
 
 	// Admin routes
 	admin := router.Group("/admin")
@@ -60,6 +61,7 @@ func (server *Server) setupRouter() {
 	server.registerAdminCurrencyRoutes(admin)
 	server.registerAdminAccountRoutes(admin)
 	server.registerAdminAccountDetailsRoutes(admin)
+	server.registerAdminEntriesRoutes(admin)
 
 	server.router = router
 }
