@@ -34,3 +34,25 @@ SELECT * FROM conversions
 WHERE user_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
+
+
+
+-- name: ListConversionsAdmin :many
+SELECT *
+FROM conversions
+WHERE (sqlc.narg('user_id')::bigint        IS NULL OR user_id       = sqlc.narg('user_id'))
+  AND (sqlc.narg('from_currency')::text    IS NULL OR from_currency = sqlc.narg('from_currency'))
+  AND (sqlc.narg('to_currency')::text      IS NULL OR to_currency   = sqlc.narg('to_currency'))
+  AND (sqlc.narg('from_date')::timestamptz IS NULL OR created_at   >= sqlc.narg('from_date'))
+  AND (sqlc.narg('to_date')::timestamptz   IS NULL OR created_at    < sqlc.narg('to_date'))
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg('limit')
+OFFSET sqlc.arg('offset');
+ 
+ 
+-- name: UpdateConversionStatus :one
+UPDATE conversions
+SET status = sqlc.arg('status')
+WHERE id = sqlc.arg('id')
+RETURNING *;
+ 
