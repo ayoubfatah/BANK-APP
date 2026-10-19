@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 
 	db "github.com/bank-app/db/sqlc"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -15,6 +16,42 @@ type CreateCardTransactionParams struct {
 	Amount            int64
 	Currency          string
 	AuthorizationCode pgtype.Text
+}
+
+var ErrCardLimitReached = errors.New("card limit per user reached")
+
+func (store *Store) CreateCardTx(
+	ctx context.Context,
+	arg db.CreateCardParams,
+) (db.Card, error) {
+	var card db.Card
+
+	err := store.execTx(ctx, func(q *db.Queries) error {
+		// Lock the user row so concurrent card creations
+		// for this user are serialized.
+		_, err := q.LockUserForCardCreation(ctx, arg.UserID)
+		if err != nil {
+			return err
+		}
+
+		count, err := q.CountCardsByUserID(ctx, arg.UserID)
+		if err != nil {
+			return err
+		}
+
+		if count >= 4 {
+			return ErrCardLimitReached
+		}
+
+		card, err = q.CreateCard(ctx, arg)
+		return err
+	})
+
+	if err != nil {
+		return db.Card{}, err
+	}
+
+	return card, nil
 }
 
 // CreateCardTransaction inserts a new card_transactions row with

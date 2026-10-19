@@ -160,6 +160,72 @@ func (q *Queries) GetConversionForUpdate(ctx context.Context, id int64) (Convers
 	return i, err
 }
 
+const listConversionsAdmin = `-- name: ListConversionsAdmin :many
+SELECT id, user_id, from_account_id, to_account_id, from_amount, to_amount, from_currency, to_currency, exchange_rate, fee, status, idempotency_key, created_at, completed_at
+FROM conversions
+WHERE ($1::bigint        IS NULL OR user_id       = $1)
+  AND ($2::text    IS NULL OR from_currency = $2)
+  AND ($3::text      IS NULL OR to_currency   = $3)
+  AND ($4::timestamptz IS NULL OR created_at   >= $4)
+  AND ($5::timestamptz   IS NULL OR created_at    < $5)
+ORDER BY created_at DESC, id DESC
+LIMIT $7
+OFFSET $6
+`
+
+type ListConversionsAdminParams struct {
+	UserID       pgtype.Int8        `json:"user_id"`
+	FromCurrency pgtype.Text        `json:"from_currency"`
+	ToCurrency   pgtype.Text        `json:"to_currency"`
+	FromDate     pgtype.Timestamptz `json:"from_date"`
+	ToDate       pgtype.Timestamptz `json:"to_date"`
+	Offset       int32              `json:"offset"`
+	Limit        int32              `json:"limit"`
+}
+
+func (q *Queries) ListConversionsAdmin(ctx context.Context, arg ListConversionsAdminParams) ([]Conversion, error) {
+	rows, err := q.db.Query(ctx, listConversionsAdmin,
+		arg.UserID,
+		arg.FromCurrency,
+		arg.ToCurrency,
+		arg.FromDate,
+		arg.ToDate,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Conversion{}
+	for rows.Next() {
+		var i Conversion
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FromAccountID,
+			&i.ToAccountID,
+			&i.FromAmount,
+			&i.ToAmount,
+			&i.FromCurrency,
+			&i.ToCurrency,
+			&i.ExchangeRate,
+			&i.Fee,
+			&i.Status,
+			&i.IdempotencyKey,
+			&i.CreatedAt,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listConversionsByUserID = `-- name: ListConversionsByUserID :many
 SELECT id, user_id, from_account_id, to_account_id, from_amount, to_amount, from_currency, to_currency, exchange_rate, fee, status, idempotency_key, created_at, completed_at FROM conversions
 WHERE user_id = $1
@@ -206,4 +272,38 @@ func (q *Queries) ListConversionsByUserID(ctx context.Context, arg ListConversio
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateConversionStatus = `-- name: UpdateConversionStatus :one
+UPDATE conversions
+SET status = $1
+WHERE id = $2
+RETURNING id, user_id, from_account_id, to_account_id, from_amount, to_amount, from_currency, to_currency, exchange_rate, fee, status, idempotency_key, created_at, completed_at
+`
+
+type UpdateConversionStatusParams struct {
+	Status string `json:"status"`
+	ID     int64  `json:"id"`
+}
+
+func (q *Queries) UpdateConversionStatus(ctx context.Context, arg UpdateConversionStatusParams) (Conversion, error) {
+	row := q.db.QueryRow(ctx, updateConversionStatus, arg.Status, arg.ID)
+	var i Conversion
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.FromAccountID,
+		&i.ToAccountID,
+		&i.FromAmount,
+		&i.ToAmount,
+		&i.FromCurrency,
+		&i.ToCurrency,
+		&i.ExchangeRate,
+		&i.Fee,
+		&i.Status,
+		&i.IdempotencyKey,
+		&i.CreatedAt,
+		&i.CompletedAt,
+	)
+	return i, err
 }

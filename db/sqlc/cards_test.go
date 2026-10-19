@@ -10,6 +10,8 @@ import (
 )
 
 func createNewCard(t *testing.T) Card {
+	t.Helper()
+
 	user := createNewUser(t)
 
 	account, err := testQueries.CreateAccount(context.Background(), CreateAccountParams{
@@ -20,12 +22,17 @@ func createNewCard(t *testing.T) Card {
 	})
 	require.NoError(t, err)
 
+	cardNumber := "4242424242424242"
+
 	card, err := testQueries.CreateCard(context.Background(), CreateCardParams{
-		UserID:    user.ID,
-		AccountID: account.ID,
-		LastFour:  "4242",
-		CardType:  "physical",
-		Status:    "active",
+		UserID:     user.ID,
+		AccountID:  account.ID,
+		CardNumber: cardNumber,
+		LastFour:   "4242",
+		Cvv:        "123",
+		Brand:      "visa",
+		CardType:   "physical",
+		Status:     "active",
 		ExpiryDate: pgtype.Date{
 			Time:  time.Now().AddDate(3, 0, 0),
 			Valid: true,
@@ -45,6 +52,7 @@ func TestCreateCard(t *testing.T) {
 
 	require.Equal(t, "4242", card.LastFour)
 	require.Equal(t, "physical", card.CardType)
+	require.Equal(t, "visa", card.Brand)
 	require.Equal(t, "active", card.Status)
 	require.False(t, card.ExpiryDate.Time.IsZero())
 }
@@ -52,17 +60,16 @@ func TestCreateCard(t *testing.T) {
 func TestGetCard(t *testing.T) {
 	createdCard := createNewCard(t)
 
-	card, err := testQueries.GetCard(
-		context.Background(),
-		createdCard.ID,
-	)
+	card, err := testQueries.GetCard(context.Background(), createdCard.ID)
 
 	require.NoError(t, err)
 
 	require.Equal(t, createdCard.ID, card.ID)
 	require.Equal(t, createdCard.UserID, card.UserID)
 	require.Equal(t, createdCard.AccountID, card.AccountID)
+	require.Equal(t, createdCard.CardNumber, card.CardNumber)
 	require.Equal(t, createdCard.LastFour, card.LastFour)
+	require.Equal(t, createdCard.Brand, card.Brand)
 	require.Equal(t, createdCard.CardType, card.CardType)
 	require.Equal(t, createdCard.Status, card.Status)
 	require.Equal(t, createdCard.ExpiryDate, card.ExpiryDate)
@@ -79,42 +86,41 @@ func TestListCardsByUserID(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = testQueries.CreateCard(context.Background(), CreateCardParams{
-		UserID:    user.ID,
-		AccountID: account.ID,
-		LastFour:  "1111",
-		CardType:  "physical",
-		Status:    "active",
-		ExpiryDate: pgtype.Date{
-			Time:  time.Now().AddDate(3, 0, 0),
-			Valid: true,
-		},
-	})
-	require.NoError(t, err)
+	testCards := []struct {
+		cardNumber string
+		lastFour   string
+		cardType   string
+	}{
+		{"4111111111111111", "1111", "physical"},
+		{"5555555555552222", "2222", "virtual"},
+	}
 
-	_, err = testQueries.CreateCard(context.Background(), CreateCardParams{
-		UserID:    user.ID,
-		AccountID: account.ID,
-		LastFour:  "2222",
-		CardType:  "virtual",
-		Status:    "active",
-		ExpiryDate: pgtype.Date{
-			Time:  time.Now().AddDate(3, 0, 0),
-			Valid: true,
-		},
-	})
-	require.NoError(t, err)
+	for _, tc := range testCards {
+		_, err := testQueries.CreateCard(context.Background(), CreateCardParams{
+			UserID:     user.ID,
+			AccountID:  account.ID,
+			CardNumber: tc.cardNumber,
+			LastFour:   tc.lastFour,
+			Cvv:        "123",
+			Brand:      "visa",
+			CardType:   tc.cardType,
+			Status:     "active",
+			ExpiryDate: pgtype.Date{
+				Time:  time.Now().AddDate(3, 0, 0),
+				Valid: true,
+			},
+		})
+		require.NoError(t, err)
+	}
 
-	cards, err := testQueries.ListCardsByUserID(
-		context.Background(),
-		user.ID,
-	)
+	cards, err := testQueries.ListCardsByUserID(context.Background(), user.ID)
 
 	require.NoError(t, err)
 	require.Len(t, cards, 2)
 
-	require.Equal(t, user.ID, cards[0].UserID)
-	require.Equal(t, user.ID, cards[1].UserID)
+	for _, card := range cards {
+		require.Equal(t, user.ID, card.UserID)
+	}
 }
 
 func TestListCardsByAccountID(t *testing.T) {
@@ -128,42 +134,41 @@ func TestListCardsByAccountID(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = testQueries.CreateCard(context.Background(), CreateCardParams{
-		UserID:    user.ID,
-		AccountID: account.ID,
-		LastFour:  "3333",
-		CardType:  "physical",
-		Status:    "active",
-		ExpiryDate: pgtype.Date{
-			Time:  time.Now().AddDate(3, 0, 0),
-			Valid: true,
-		},
-	})
-	require.NoError(t, err)
+	testCards := []struct {
+		cardNumber string
+		lastFour   string
+		cardType   string
+	}{
+		{"4000000000003333", "3333", "physical"},
+		{"4000000000004444", "4444", "virtual"},
+	}
 
-	_, err = testQueries.CreateCard(context.Background(), CreateCardParams{
-		UserID:    user.ID,
-		AccountID: account.ID,
-		LastFour:  "4444",
-		CardType:  "virtual",
-		Status:    "active",
-		ExpiryDate: pgtype.Date{
-			Time:  time.Now().AddDate(3, 0, 0),
-			Valid: true,
-		},
-	})
-	require.NoError(t, err)
+	for _, tc := range testCards {
+		_, err := testQueries.CreateCard(context.Background(), CreateCardParams{
+			UserID:     user.ID,
+			AccountID:  account.ID,
+			CardNumber: tc.cardNumber,
+			LastFour:   tc.lastFour,
+			Cvv:        "123",
+			Brand:      "visa",
+			CardType:   tc.cardType,
+			Status:     "active",
+			ExpiryDate: pgtype.Date{
+				Time:  time.Now().AddDate(3, 0, 0),
+				Valid: true,
+			},
+		})
+		require.NoError(t, err)
+	}
 
-	cards, err := testQueries.ListCardsByAccountID(
-		context.Background(),
-		account.ID,
-	)
+	cards, err := testQueries.ListCardsByAccountID(context.Background(), account.ID)
 
 	require.NoError(t, err)
 	require.Len(t, cards, 2)
 
-	require.Equal(t, account.ID, cards[0].AccountID)
-	require.Equal(t, account.ID, cards[1].AccountID)
+	for _, card := range cards {
+		require.Equal(t, account.ID, card.AccountID)
+	}
 }
 
 func TestFreezeCard(t *testing.T) {
@@ -173,12 +178,12 @@ func TestFreezeCard(t *testing.T) {
 		context.Background(),
 		UpdateCardStatusParams{
 			ID:     card.ID,
-			Status: "frozen",
+			Status: "blocked",
 		},
 	)
 
 	require.NoError(t, err)
-	require.Equal(t, "frozen", updatedCard.Status)
+	require.Equal(t, "blocked", updatedCard.Status)
 }
 
 func TestUnfreezeCard(t *testing.T) {
@@ -188,7 +193,7 @@ func TestUnfreezeCard(t *testing.T) {
 		context.Background(),
 		UpdateCardStatusParams{
 			ID:     card.ID,
-			Status: "frozen",
+			Status: "blocked",
 		},
 	)
 	require.NoError(t, err)
@@ -238,10 +243,7 @@ func TestExpireCard(t *testing.T) {
 func TestCardBelongsToCorrectUser(t *testing.T) {
 	card := createNewCard(t)
 
-	cardFromDB, err := testQueries.GetCard(
-		context.Background(),
-		card.ID,
-	)
+	cardFromDB, err := testQueries.GetCard(context.Background(), card.ID)
 
 	require.NoError(t, err)
 	require.Equal(t, card.UserID, cardFromDB.UserID)
@@ -250,10 +252,7 @@ func TestCardBelongsToCorrectUser(t *testing.T) {
 func TestCardBelongsToCorrectAccount(t *testing.T) {
 	card := createNewCard(t)
 
-	cardFromDB, err := testQueries.GetCard(
-		context.Background(),
-		card.ID,
-	)
+	cardFromDB, err := testQueries.GetCard(context.Background(), card.ID)
 
 	require.NoError(t, err)
 	require.Equal(t, card.AccountID, cardFromDB.AccountID)

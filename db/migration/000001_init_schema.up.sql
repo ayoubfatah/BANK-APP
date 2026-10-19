@@ -295,27 +295,53 @@ CREATE TABLE "incoming_payments" (
 
 );
 
-CREATE TABLE "cards" (
 
-  "id" bigserial PRIMARY KEY,
+CREATE TABLE cards (
+    id           bigserial PRIMARY KEY,
+    user_id      bigint NOT NULL,
+    account_id   bigint NOT NULL,
 
-  "user_id" bigint NOT NULL,
+    card_number  varchar(19) NOT NULL
+                 CHECK (card_number ~ '^[0-9]{13,19}$'),
 
-  "account_id" bigint NOT NULL,
+    last_four    varchar(4) NOT NULL
+                 CHECK (last_four ~ '^[0-9]{4}$'),
 
-  "last_four" varchar(4) NOT NULL,
+    cvv          varchar(4) NOT NULL
+                 CHECK (cvv ~ '^[0-9]{3,4}$'),
 
-  "card_type" varchar NOT NULL,
+    brand        varchar(20) NOT NULL
+                 CHECK (brand IN (
+                     'visa',
+                     'mastercard',
+                     'amex',
+                     'discover'
+                 )),
 
-  "status" varchar NOT NULL,
+    card_type    varchar(10) NOT NULL DEFAULT 'physical'
+                 CHECK (card_type IN (
+                     'physical',
+                     'virtual'
+                 )),
 
-  "expiry_date" date NOT NULL,
+    status       varchar(20) NOT NULL DEFAULT 'active'
+                 CHECK (status IN (
+                     'active',
+                     'blocked',
+                     'expired',
+                     'cancelled'
+                 )),
 
-  "created_at" timestamptz NOT NULL DEFAULT (now()),
+    expiry_date  date  NOT NULL,
 
-  "updated_at" timestamptz NOT NULL DEFAULT (now())
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    updated_at   timestamptz NOT NULL DEFAULT now(),
 
+    CHECK (right(card_number, 4) = last_four)
 );
+
+
+
 
 CREATE TABLE "card_transactions" (
 

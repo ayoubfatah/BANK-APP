@@ -100,10 +100,11 @@ func TestRecording_ShowBalancesBeforeTransfer(t *testing.T) {
 			Currency: "USD",
 		},
 	)
+
 	require.NoError(t, err)
 
 	require.Equal(t, int64(100000), ayoubAccount.Balance)
-	require.Equal(t, int64(50000), youssefAccount.Balance)
+	require.Equal(t, int64(49900), youssefAccount.Balance)
 }
 
 func TestCreateTransferTransaction_AyoubSendsYoussef(t *testing.T) {

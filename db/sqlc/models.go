@@ -94,10 +94,13 @@ type BusinessMember struct {
 }
 
 type Card struct {
-	ID        int64  `json:"id"`
-	UserID    int64  `json:"user_id"`
-	AccountID int64  `json:"account_id"`
-	LastFour  string `json:"last_four"`
+	ID         int64  `json:"id"`
+	UserID     int64  `json:"user_id"`
+	AccountID  int64  `json:"account_id"`
+	CardNumber string `json:"card_number"`
+	LastFour   string `json:"last_four"`
+	Cvv        string `json:"cvv"`
+	Brand      string `json:"brand"`
 	// physical, virtual
 	CardType string `json:"card_type"`
 	// active, frozen, cancelled, expired
