@@ -100,30 +100,31 @@ func TestRecording_ShowBalancesBeforeTransfer(t *testing.T) {
 			Currency: "USD",
 		},
 	)
-
 	require.NoError(t, err)
 
 	require.Equal(t, int64(100000), ayoubAccount.Balance)
-	require.Equal(t, int64(49900), youssefAccount.Balance)
+	require.Equal(t, int64(50000), youssefAccount.Balance)
 }
 
 func TestCreateTransferTransaction_AyoubSendsYoussef(t *testing.T) {
 	store := testStore
 
+	ctx := context.Background()
+
 	ayoub, err := store.GetUserByEmail(
-		context.Background(),
+		ctx,
 		"ayoub-recording@test.com",
 	)
 	require.NoError(t, err)
 
 	youssef, err := store.GetUserByEmail(
-		context.Background(),
+		ctx,
 		"youssef-recording@test.com",
 	)
 	require.NoError(t, err)
 
 	ayoubAccount, err := store.GetAccountByUserAndCurrency(
-		context.Background(),
+		ctx,
 		db.GetAccountByUserAndCurrencyParams{
 			UserID:   ayoub.ID,
 			Currency: "USD",
@@ -132,7 +133,7 @@ func TestCreateTransferTransaction_AyoubSendsYoussef(t *testing.T) {
 	require.NoError(t, err)
 
 	youssefAccount, err := store.GetAccountByUserAndCurrency(
-		context.Background(),
+		ctx,
 		db.GetAccountByUserAndCurrencyParams{
 			UserID:   youssef.ID,
 			Currency: "USD",
@@ -142,8 +143,19 @@ func TestCreateTransferTransaction_AyoubSendsYoussef(t *testing.T) {
 
 	amount := int64(10000)
 
+	feeRule, err := store.GetActiveFeeRule(
+		ctx,
+		db.GetActiveFeeRuleParams{
+			OperationType: "transfer",
+			Currency:      ayoubAccount.Currency,
+		},
+	)
+	require.NoError(t, err)
+
+	feeAmount := CalculateFee(feeRule, amount)
+
 	err = store.CreateTransferTransaction(
-		context.Background(),
+		ctx,
 		CreateTransferTransactionArgs{
 			FromAccountID: ayoubAccount.ID,
 			ToAccountID:   youssefAccount.ID,
@@ -162,33 +174,41 @@ func TestCreateTransferTransaction_AyoubSendsYoussef(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	ayoubAfter, err := store.GetAccount(
-		context.Background(),
-		ayoubAccount.ID,
-	)
+	ayoubAfter, err := store.GetAccount(ctx, ayoubAccount.ID)
 	require.NoError(t, err)
 
-	youssefAfter, err := store.GetAccount(
-		context.Background(),
-		youssefAccount.ID,
-	)
+	youssefAfter, err := store.GetAccount(ctx, youssefAccount.ID)
 	require.NoError(t, err)
 
-	require.Equal(t, int64(90000), ayoubAfter.Balance)
+	require.Equal(t, int64(100000)-amount-feeAmount, ayoubAfter.Balance)
 	require.Equal(t, int64(60000), youssefAfter.Balance)
 
 	ayoubEntries, err := store.ListEntriesByAccountID(
-		context.Background(),
+		ctx,
 		ayoubAccount.ID,
 	)
 	require.NoError(t, err)
+	require.Len(t, ayoubEntries, 2)
 
-	require.Len(t, ayoubEntries, 1)
-	require.Equal(t, "withdrawal", ayoubEntries[0].Type)
-	require.Equal(t, amount, ayoubEntries[0].Amount)
+	var withdrawalFound, feeFound bool
+
+	for _, entry := range ayoubEntries {
+		switch entry.Type {
+		case "withdrawal":
+			withdrawalFound = true
+			require.Equal(t, amount, entry.Amount)
+
+		case "fee":
+			feeFound = true
+			require.Equal(t, feeAmount, entry.Amount)
+		}
+	}
+
+	require.True(t, withdrawalFound, "withdrawal entry should exist")
+	require.True(t, feeFound, "fee entry should exist")
 
 	youssefEntries, err := store.ListEntriesByAccountID(
-		context.Background(),
+		ctx,
 		youssefAccount.ID,
 	)
 	require.NoError(t, err)

@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS card_spending_limits;

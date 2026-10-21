@@ -104,10 +104,19 @@ type Card struct {
 	// physical, virtual
 	CardType string `json:"card_type"`
 	// active, frozen, cancelled, expired
-	Status     string             `json:"status"`
-	ExpiryDate pgtype.Date        `json:"expiry_date"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	Status          string             `json:"status"`
+	CancelledReason pgtype.Text        `json:"cancelled_reason"`
+	ExpiryDate      pgtype.Date        `json:"expiry_date"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CardSpendingLimit struct {
+	CardID       int64              `json:"card_id"`
+	DailyLimit   pgtype.Int8        `json:"daily_limit"`
+	MonthlyLimit pgtype.Int8        `json:"monthly_limit"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 type CardTransaction struct {

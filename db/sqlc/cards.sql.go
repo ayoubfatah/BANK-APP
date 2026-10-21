@@ -11,10 +11,87 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const adminCancelCard = `-- name: AdminCancelCard :one
+UPDATE cards
+SET status = 'cancelled',
+    cancelled_reason = $1,
+    cancelled_at = now(),
+    updated_at = now()
+WHERE id = $2
+  AND status IN ('active', 'frozen', 'blocked')
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+`
+
+type AdminCancelCardParams struct {
+	Reason pgtype.Text `json:"reason"`
+	ID     int64       `json:"id"`
+}
+
+func (q *Queries) AdminCancelCard(ctx context.Context, arg AdminCancelCardParams) (Card, error) {
+	row := q.db.QueryRow(ctx, adminCancelCard, arg.Reason, arg.ID)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.CardNumber,
+		&i.LastFour,
+		&i.Cvv,
+		&i.Brand,
+		&i.CardType,
+		&i.Status,
+		&i.CancelledReason,
+		&i.ExpiryDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const cancelCard = `-- name: CancelCard :one
+UPDATE cards
+SET status = 'cancelled',
+    cancelled_reason = $1,
+    cancelled_at = now(),
+    updated_at = now()
+WHERE id = $2
+  AND user_id = $3
+  AND status IN ('active', 'frozen')
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+`
+
+type CancelCardParams struct {
+	Reason pgtype.Text `json:"reason"`
+	ID     int64       `json:"id"`
+	UserID int64       `json:"user_id"`
+}
+
+func (q *Queries) CancelCard(ctx context.Context, arg CancelCardParams) (Card, error) {
+	row := q.db.QueryRow(ctx, cancelCard, arg.Reason, arg.ID, arg.UserID)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.CardNumber,
+		&i.LastFour,
+		&i.Cvv,
+		&i.Brand,
+		&i.CardType,
+		&i.Status,
+		&i.CancelledReason,
+		&i.ExpiryDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const countCardsByUserID = `-- name: CountCardsByUserID :one
 SELECT COUNT(*)
 FROM cards
 WHERE user_id = $1
+  AND status IN ('active', 'frozen', 'blocked')
 `
 
 func (q *Queries) CountCardsByUserID(ctx context.Context, userID int64) (int64, error) {
@@ -46,7 +123,7 @@ INSERT INTO cards (
     $8,
     $9
 )
-RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, expiry_date, created_at, updated_at
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
 `
 
 type CreateCardParams struct {
@@ -84,6 +161,42 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (Card, e
 		&i.Brand,
 		&i.CardType,
 		&i.Status,
+		&i.CancelledReason,
+		&i.ExpiryDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const freezeCard = `-- name: FreezeCard :one
+UPDATE cards
+SET status = 'frozen'
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'active'
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+`
+
+type FreezeCardParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+}
+
+func (q *Queries) FreezeCard(ctx context.Context, arg FreezeCardParams) (Card, error) {
+	row := q.db.QueryRow(ctx, freezeCard, arg.ID, arg.UserID)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.CardNumber,
+		&i.LastFour,
+		&i.Cvv,
+		&i.Brand,
+		&i.CardType,
+		&i.Status,
+		&i.CancelledReason,
 		&i.ExpiryDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -92,7 +205,7 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (Card, e
 }
 
 const getCard = `-- name: GetCard :one
-SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, expiry_date, created_at, updated_at
+SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
 FROM cards
 WHERE id = $1
 LIMIT 1
@@ -111,6 +224,41 @@ func (q *Queries) GetCard(ctx context.Context, id int64) (Card, error) {
 		&i.Brand,
 		&i.CardType,
 		&i.Status,
+		&i.CancelledReason,
+		&i.ExpiryDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCardByIDAndUserID = `-- name: GetCardByIDAndUserID :one
+SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+FROM cards
+WHERE id = $1
+  AND user_id = $2
+LIMIT 1
+`
+
+type GetCardByIDAndUserIDParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+}
+
+func (q *Queries) GetCardByIDAndUserID(ctx context.Context, arg GetCardByIDAndUserIDParams) (Card, error) {
+	row := q.db.QueryRow(ctx, getCardByIDAndUserID, arg.ID, arg.UserID)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.CardNumber,
+		&i.LastFour,
+		&i.Cvv,
+		&i.Brand,
+		&i.CardType,
+		&i.Status,
+		&i.CancelledReason,
 		&i.ExpiryDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -119,7 +267,7 @@ func (q *Queries) GetCard(ctx context.Context, id int64) (Card, error) {
 }
 
 const listCardsByAccountID = `-- name: ListCardsByAccountID :many
-SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, expiry_date, created_at, updated_at
+SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
 FROM cards
 WHERE account_id = $1
 ORDER BY created_at DESC
@@ -144,6 +292,7 @@ func (q *Queries) ListCardsByAccountID(ctx context.Context, accountID int64) ([]
 			&i.Brand,
 			&i.CardType,
 			&i.Status,
+			&i.CancelledReason,
 			&i.ExpiryDate,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -159,7 +308,7 @@ func (q *Queries) ListCardsByAccountID(ctx context.Context, accountID int64) ([]
 }
 
 const listCardsByUserID = `-- name: ListCardsByUserID :many
-SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, expiry_date, created_at, updated_at
+SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
 FROM cards
 WHERE user_id = $1
 ORDER BY created_at DESC
@@ -184,6 +333,7 @@ func (q *Queries) ListCardsByUserID(ctx context.Context, userID int64) ([]Card, 
 			&i.Brand,
 			&i.CardType,
 			&i.Status,
+			&i.CancelledReason,
 			&i.ExpiryDate,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -212,13 +362,48 @@ func (q *Queries) LockUserForCardCreation(ctx context.Context, id int64) (int64,
 	return id_2, err
 }
 
+const unFreezeCard = `-- name: UnFreezeCard :one
+UPDATE cards
+SET status = 'active'
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'frozen'
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+`
+
+type UnFreezeCardParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
+}
+
+func (q *Queries) UnFreezeCard(ctx context.Context, arg UnFreezeCardParams) (Card, error) {
+	row := q.db.QueryRow(ctx, unFreezeCard, arg.ID, arg.UserID)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.CardNumber,
+		&i.LastFour,
+		&i.Cvv,
+		&i.Brand,
+		&i.CardType,
+		&i.Status,
+		&i.CancelledReason,
+		&i.ExpiryDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateCardStatus = `-- name: UpdateCardStatus :one
 UPDATE cards
 SET
     status = $1,
     updated_at = now()
 WHERE id = $2
-RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, expiry_date, created_at, updated_at
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
 `
 
 type UpdateCardStatusParams struct {
@@ -239,6 +424,7 @@ func (q *Queries) UpdateCardStatus(ctx context.Context, arg UpdateCardStatusPara
 		&i.Brand,
 		&i.CardType,
 		&i.Status,
+		&i.CancelledReason,
 		&i.ExpiryDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,

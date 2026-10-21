@@ -58,12 +58,26 @@ func TestCreateTransferTransaction_AyoubSendsRoma(t *testing.T) {
 			Valid:  true,
 		},
 	})
+
+	feeRule, err := store.GetActiveFeeRule(
+		context.Background(),
+		db.GetActiveFeeRuleParams{
+			OperationType: "transfer",
+			Currency:      ayoub.Currency,
+		},
+	)
+	require.NoError(t, err)
+
+	feeAmount := CalculateFee(feeRule, amount)
+
 	require.NoError(t, err)
 
 	// balances actually moved
 	ayoubAfter, err := store.GetAccount(context.Background(), ayoub.ID)
 	require.NoError(t, err)
-	require.Equal(t, int64(ayoubBalance-int(amount)), ayoubAfter.Balance)
+
+	expectedBalance := int64(ayoubBalance) - amount - feeAmount
+	require.Equal(t, expectedBalance, ayoubAfter.Balance)
 
 	romaAfter, err := store.GetAccount(context.Background(), roma.ID)
 	require.NoError(t, err)
@@ -72,9 +86,11 @@ func TestCreateTransferTransaction_AyoubSendsRoma(t *testing.T) {
 	// entries written correctly
 	ayoubEntries, err := store.ListEntriesByAccountID(context.Background(), ayoub.ID)
 	require.NoError(t, err)
-	require.Len(t, ayoubEntries, 1)
-	require.Equal(t, "withdrawal", ayoubEntries[0].Type)
-	require.Equal(t, amount, ayoubEntries[0].Amount)
+	require.Len(t, ayoubEntries, 2)
+	require.Equal(t, "fee", ayoubEntries[0].Type)
+	require.Equal(t, "withdrawal", ayoubEntries[1].Type)
+	require.Equal(t, feeAmount, ayoubEntries[0].Amount)
+	require.Equal(t, amount, ayoubEntries[1].Amount)
 
 	romaEntries, err := store.ListEntriesByAccountID(context.Background(), roma.ID)
 	require.NoError(t, err)

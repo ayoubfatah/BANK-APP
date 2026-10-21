@@ -53,6 +53,23 @@ WHERE id = sqlc.arg(id)
 RETURNING *;
 
 
+-- name: FreezeCard :one
+UPDATE cards
+SET status = 'frozen'
+WHERE id = sqlc.arg(id)
+  AND user_id = sqlc.arg(user_id)
+  AND status = 'active'
+RETURNING *;
+
+
+-- name: UnFreezeCard :one
+UPDATE cards
+SET status = 'active'
+WHERE id = sqlc.arg(id)
+  AND user_id = sqlc.arg(user_id)
+  AND status = 'frozen'
+RETURNING *;
+
 
 -- name: LockUserForCardCreation :one
 SELECT id
@@ -63,4 +80,35 @@ FOR UPDATE;
 -- name: CountCardsByUserID :one
 SELECT COUNT(*)
 FROM cards
-WHERE user_id = $1;
+WHERE user_id = $1
+  AND status IN ('active', 'frozen', 'blocked');
+
+
+-- name: GetCardByIDAndUserID :one
+SELECT *
+FROM cards
+WHERE id = $1
+  AND user_id = $2
+LIMIT 1;
+
+
+-- name: CancelCard :one
+UPDATE cards
+SET status = 'cancelled',
+    cancelled_reason = sqlc.narg('reason'),
+    cancelled_at = now(),
+    updated_at = now()
+WHERE id = sqlc.arg('id')
+  AND user_id = sqlc.arg('user_id')
+  AND status IN ('active', 'frozen')
+RETURNING *;
+
+-- name: AdminCancelCard :one
+UPDATE cards
+SET status = 'cancelled',
+    cancelled_reason = sqlc.narg('reason'),
+    cancelled_at = now(),
+    updated_at = now()
+WHERE id = sqlc.arg('id')
+  AND status IN ('active', 'frozen', 'blocked')
+RETURNING *;

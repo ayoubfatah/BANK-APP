@@ -6,6 +6,7 @@ import (
 	"time"
 
 	db "github.com/bank-app/db/sqlc"
+	"github.com/bank-app/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
@@ -15,6 +16,9 @@ func createRandomCard(t *testing.T) db.Card {
 	t.Helper()
 
 	user := createNewUser(t)
+
+	cardNumber := utils.RandomNumbers(14)
+	lastFour := cardNumber[len(cardNumber)-4:] // Extracts the actual last 4 digits
 
 	account, err := testStore.CreateAccount(
 		context.Background(),
@@ -30,11 +34,14 @@ func createRandomCard(t *testing.T) db.Card {
 	card, err := testStore.CreateCard(
 		context.Background(),
 		db.CreateCardParams{
-			UserID:    user.ID,
-			AccountID: account.ID,
-			LastFour:  "4242",
-			CardType:  "physical",
-			Status:    "active",
+			UserID:     user.ID,
+			AccountID:  account.ID,
+			LastFour:   lastFour,
+			CardNumber: cardNumber,
+			Cvv:        utils.RandomNumbers(3),
+			Brand:      "visa",
+			CardType:   "physical",
+			Status:     "active",
 			ExpiryDate: pgtype.Date{
 				Time:  time.Now().AddDate(3, 0, 0),
 				Valid: true,

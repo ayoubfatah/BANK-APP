@@ -328,9 +328,13 @@ CREATE TABLE cards (
                  CHECK (status IN (
                      'active',
                      'blocked',
+                     'frozen',
                      'expired',
                      'cancelled'
                  )),
+
+    cancelled_reason  varchar(20)
+     CHECK (cancelled_reason IN ('lost', 'stolen', 'damaged', 'user_request', 'fraud')),
 
     expiry_date  date  NOT NULL,
 

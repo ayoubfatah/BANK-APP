@@ -51,7 +51,6 @@ func TestAuthMiddleware(t *testing.T) {
 	payload, err := maker.VerifyToken(validToken)
 	require.NoError(t, err)
 
-	t.Logf("Decoded payload: %+v", payload)
 	require.Equal(t, "customer", payload.Role)
 
 	testCases := []struct {

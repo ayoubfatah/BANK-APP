@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/netip"
 	"time"
@@ -122,7 +123,7 @@ type logoutRequest struct {
 
 func (server *Server) logoutUser(ctx *gin.Context) {
 	payload := getAuthPayload(ctx)
-
+	fmt.Println("PAYLOAD---", payload)
 	var req logoutRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
@@ -157,7 +158,6 @@ func (server *Server) logoutUser(ctx *gin.Context) {
 	_, err = server.store.RevokeRefreshToken(ctx, tokenHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			// Another request may already have revoked it.
 			ctx.Status(http.StatusNoContent)
 			return
 		}
@@ -166,5 +166,5 @@ func (server *Server) logoutUser(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Status(http.StatusNoContent)
+	ctx.JSON(http.StatusOK, "logged out successfully")
 }

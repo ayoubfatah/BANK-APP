@@ -8,6 +8,7 @@ import (
 	db "github.com/bank-app/db/sqlc"
 	"github.com/bank-app/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -28,6 +29,18 @@ func newCardResponse(card db.Card) cardResponse {
 		Status:     card.Status,
 		ExpiryDate: card.ExpiryDate.Time,
 	}
+}
+
+func (server *Server) cardTransitionError(ctx *gin.Context, err error, id, userID int64) {
+	if errors.Is(err, pgx.ErrNoRows) {
+		card, getErr := server.store.GetCardByIDAndUserID(ctx, db.GetCardByIDAndUserIDParams{ID: id, UserID: userID})
+		if getErr == nil {
+			ctx.JSON(http.StatusConflict, gin.H{"error": "card is " + card.Status})
+			return
+		}
+		err = getErr
+	}
+	handleDBError(ctx, err)
 }
 
 type CreateCardRequest struct {
@@ -137,4 +150,91 @@ func (server *Server) getCards(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, newCardsResponse)
+}
+
+// FREEZE CARD
+
+type FreezeCardParam struct {
+	ID int64 `uri:"id" binding:"required,min=1"`
+}
+
+func (server *Server) freezeCard(ctx *gin.Context) {
+	payload := getAuthPayload(ctx)
+	var param FreezeCardParam
+	if err := ctx.ShouldBindUri(&param); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	freezedCard, err := server.store.FreezeCard(ctx, db.FreezeCardParams{
+		ID:     param.ID,
+		UserID: payload.UserID,
+	})
+
+	if err != nil {
+		server.cardTransitionError(ctx, err, param.ID, payload.UserID)
+		return
+	}
+	ctx.JSON(http.StatusOK, newCardResponse(freezedCard))
+}
+
+// Unfreeze card
+
+type UnFreezeCardParam struct {
+	ID int64 `uri:"id" binding:"required,min=1"`
+}
+
+func (server *Server) UnfreezeCard(ctx *gin.Context) {
+	payload := getAuthPayload(ctx)
+	var param UnFreezeCardParam
+	if err := ctx.ShouldBindUri(&param); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	card, err := server.store.UnFreezeCard(ctx, db.UnFreezeCardParams{
+		ID:     param.ID,
+		UserID: payload.UserID,
+	})
+
+	if err != nil {
+		server.cardTransitionError(ctx, err, param.ID, payload.UserID)
+		return
+	}
+	ctx.JSON(http.StatusOK, newCardResponse(card))
+}
+
+type CancelCardParam struct {
+	ID int64 `uri:"id" binding:"required,min=1"`
+}
+
+type CancelCardReq struct {
+	Reason *string `json:"reason" binding:"omitempty"`
+}
+
+func (server *Server) cancelCard(ctx *gin.Context) {
+
+	payload := getAuthPayload(ctx)
+	var param CancelCardParam
+	if err := ctx.ShouldBindUri(&param); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	var req CancelCardReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	canceledCard, err := server.store.CancelCard(ctx, db.CancelCardParams{
+		ID:     param.ID,
+		UserID: payload.UserID,
+	})
+
+	if err != nil {
+		server.cardTransitionError(ctx, err, param.ID, payload.UserID)
+		return
+	}
+	ctx.JSON(http.StatusOK, newCardResponse(canceledCard))
 }
