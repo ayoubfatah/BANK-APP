@@ -159,6 +159,66 @@ func (q *Queries) GetAvailableBalance(ctx context.Context, id int64) (GetAvailab
 	return i, err
 }
 
+const getCardDailySpending = `-- name: GetCardDailySpending :one
+SELECT COALESCE(SUM(ct.amount), 0)::BIGINT
+FROM card_transactions ct
+JOIN accounts a ON a.id = ct.account_id
+WHERE ct.card_id = $1
+ AND ct.status IN ('authorized', 'captured')
+  AND ct.currency = a.currency
+  AND ct.created_at >= (
+      date_trunc(
+          'day',
+          NOW() AT TIME ZONE 'Africa/Casablanca'
+      ) AT TIME ZONE 'Africa/Casablanca'
+  )
+  AND ct.created_at < (
+      (
+          date_trunc(
+              'day',
+              NOW() AT TIME ZONE 'Africa/Casablanca'
+          ) + INTERVAL '1 day'
+      ) AT TIME ZONE 'Africa/Casablanca'
+  )
+`
+
+func (q *Queries) GetCardDailySpending(ctx context.Context, cardID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getCardDailySpending, cardID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const getCardMonthlySpending = `-- name: GetCardMonthlySpending :one
+SELECT COALESCE(SUM(ct.amount), 0)::BIGINT
+FROM card_transactions ct
+JOIN accounts a ON a.id = ct.account_id
+WHERE ct.card_id = $1
+ AND ct.status IN ('authorized', 'captured')
+  AND ct.currency = a.currency
+  AND ct.created_at >= (
+      date_trunc(
+          'month',
+          NOW() AT TIME ZONE 'Africa/Casablanca'
+      ) AT TIME ZONE 'Africa/Casablanca'
+  )
+  AND ct.created_at < (
+      (
+          date_trunc(
+              'month',
+              NOW() AT TIME ZONE 'Africa/Casablanca'
+          ) + INTERVAL '1 month'
+      ) AT TIME ZONE 'Africa/Casablanca'
+  )
+`
+
+func (q *Queries) GetCardMonthlySpending(ctx context.Context, cardID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getCardMonthlySpending, cardID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getCardTransaction = `-- name: GetCardTransaction :one
 SELECT id, card_id, account_id, merchant_name, merchant_category, amount, currency, status, authorization_code, created_at FROM card_transactions
 WHERE id = $1

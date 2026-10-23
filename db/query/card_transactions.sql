@@ -63,3 +63,59 @@ SELECT * FROM card_transactions
 WHERE account_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
+
+
+
+
+-- name: GetCardDailySpending :one
+SELECT COALESCE(SUM(ct.amount), 0)::BIGINT
+FROM card_transactions ct
+JOIN accounts a ON a.id = ct.account_id
+WHERE ct.card_id = sqlc.arg(card_id)
+ AND ct.status IN ('authorized', 'captured')
+  AND ct.currency = a.currency
+  AND ct.created_at >= (
+      date_trunc(
+          'day',
+          NOW() AT TIME ZONE 'Africa/Casablanca'
+      ) AT TIME ZONE 'Africa/Casablanca'
+  )
+  AND ct.created_at < (
+      (
+          date_trunc(
+              'day',
+              NOW() AT TIME ZONE 'Africa/Casablanca'
+          ) + INTERVAL '1 day'
+      ) AT TIME ZONE 'Africa/Casablanca'
+  ); 
+
+-- name: GetCardMonthlySpending :one
+SELECT COALESCE(SUM(ct.amount), 0)::BIGINT
+FROM card_transactions ct
+JOIN accounts a ON a.id = ct.account_id
+WHERE ct.card_id = sqlc.arg(card_id)
+ AND ct.status IN ('authorized', 'captured')
+  AND ct.currency = a.currency
+  AND ct.created_at >= (
+      date_trunc(
+          'month',
+          NOW() AT TIME ZONE 'Africa/Casablanca'
+      ) AT TIME ZONE 'Africa/Casablanca'
+  )
+  AND ct.created_at < (
+      (
+          date_trunc(
+              'month',
+              NOW() AT TIME ZONE 'Africa/Casablanca'
+          ) + INTERVAL '1 month'
+      ) AT TIME ZONE 'Africa/Casablanca'
+  );
+
+
+
+  -- name: DeleteCardSpendingLimits :execrows
+DELETE FROM card_spending_limits csl
+USING cards c
+WHERE csl.card_id = sqlc.arg(card_id)
+  AND c.id = csl.card_id
+  AND c.user_id = sqlc.arg(user_id);

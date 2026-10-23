@@ -6,6 +6,7 @@ import (
 	"time"
 
 	db "github.com/bank-app/db/sqlc"
+	"github.com/bank-app/db/store"
 	"github.com/bank-app/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -78,9 +79,10 @@ func (server *Server) createCard(ctx *gin.Context) {
 		return
 	}
 
-	card, err := server.store.CreateCardTx(ctx, db.CreateCardParams{
+	card, err := server.store.CreateCardTx(ctx, store.CreateCardTxParams{
 		UserID:     account.UserID,
 		AccountID:  account.ID,
+		Currency:   account.Currency,
 		CardNumber: cardNumber,
 		LastFour:   lastFour,
 		Cvv:        randomCvv,
@@ -237,4 +239,84 @@ func (server *Server) cancelCard(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, newCardResponse(canceledCard))
+}
+
+//  /CARD/:ID/LIMIT
+
+type cardLimitsResponse struct {
+	CardID       int64 `json:"card_id"`
+	DailyLimit   int64 `json:"daily_limit"`
+	MonthlyLimit int64 `json:"monthly_limit"`
+}
+
+type SetCardLimitsParam struct {
+	ID int64 `uri:"id" binding:"required,min=1"`
+}
+
+type setCardLimitsRequest struct {
+	DailyLimit   int64 `json:"daily_limit" binding:"omitempty,gt=0"`
+	MonthlyLimit int64 `json:"monthly_limit" binding:"omitempty,gt=0"`
+}
+
+func (server *Server) changeSpendLimit(ctx *gin.Context) {
+	payload := getAuthPayload(ctx)
+
+	var param SetCardLimitsParam
+	if err := ctx.ShouldBindUri(&param); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	var req setCardLimitsRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+	if req.DailyLimit > req.MonthlyLimit {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "daily_limit cannot be greater than monthly_limit"})
+		return
+	}
+
+	card, err := server.store.GetCardByIDAndUserID(ctx, db.GetCardByIDAndUserIDParams{
+		ID:     param.ID,
+		UserID: payload.UserID,
+	})
+	if err != nil {
+		handleDBError(ctx, err)
+		return
+	}
+	if card.Status != "active" && card.Status != "frozen" {
+		ctx.JSON(http.StatusConflict, gin.H{"error": "card is " + card.Status})
+		return
+	}
+
+	var daily, monthly pgtype.Int8
+
+	daily = pgtype.Int8{Int64: req.DailyLimit, Valid: true}
+
+	monthly = pgtype.Int8{Int64: req.MonthlyLimit, Valid: true}
+
+	limits, err := server.store.UpdateCardSpendingLimits(ctx, db.UpdateCardSpendingLimitsParams{
+		CardID:       card.ID,
+		UserID:       payload.UserID,
+		DailyLimit:   daily,
+		MonthlyLimit: monthly,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// cards created before limits existed have no row yet
+		limits, err = server.store.CreateCardSpendingLimits(ctx, db.CreateCardSpendingLimitsParams{
+			CardID:       card.ID,
+			DailyLimit:   daily,
+			MonthlyLimit: monthly,
+		})
+	}
+	if err != nil {
+		handleDBError(ctx, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, cardLimitsResponse{
+		CardID:       limits.CardID,
+		DailyLimit:   limits.DailyLimit.Int64,
+		MonthlyLimit: limits.MonthlyLimit.Int64,
+	})
 }

@@ -341,6 +341,8 @@ CREATE TABLE cards (
     created_at   timestamptz NOT NULL DEFAULT now(),
     updated_at   timestamptz NOT NULL DEFAULT now(),
 
+    
+
     CHECK (right(card_number, 4) = last_four)
 );
 

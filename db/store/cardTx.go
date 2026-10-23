@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	db "github.com/bank-app/db/sqlc"
+	"github.com/bank-app/defaults"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -18,11 +19,24 @@ type CreateCardTransactionParams struct {
 	AuthorizationCode pgtype.Text
 }
 
+type CreateCardTxParams struct {
+	UserID     int64
+	AccountID  int64
+	CardNumber string
+	LastFour   string
+	Cvv        string
+	Brand      string
+	CardType   string
+	Status     string
+	ExpiryDate pgtype.Date
+	Currency   string
+}
+
 var ErrCardLimitReached = errors.New("card limit per user reached")
 
 func (store *Store) CreateCardTx(
 	ctx context.Context,
-	arg db.CreateCardParams,
+	arg CreateCardTxParams,
 ) (db.Card, error) {
 	var card db.Card
 
@@ -43,7 +57,39 @@ func (store *Store) CreateCardTx(
 			return ErrCardLimitReached
 		}
 
-		card, err = q.CreateCard(ctx, arg)
+		card, err = q.CreateCard(ctx, db.CreateCardParams{
+			UserID:     arg.UserID,
+			AccountID:  arg.AccountID,
+			CardNumber: arg.CardNumber,
+			LastFour:   arg.LastFour,
+			Cvv:        arg.Cvv,
+			Brand:      arg.Brand,
+			CardType:   arg.CardType,
+			Status:     arg.Status,
+			ExpiryDate: arg.ExpiryDate,
+		})
+
+		limits, ok := defaults.DefaultCardLimits[arg.Currency]
+		if !ok {
+			limits = defaults.FallbackCardLimits
+		}
+
+		_, err = q.CreateCardSpendingLimits(ctx, db.CreateCardSpendingLimitsParams{
+			CardID: card.ID,
+			DailyLimit: pgtype.Int8{
+				Int64: int64(limits.Daily),
+				Valid: true,
+			},
+			MonthlyLimit: pgtype.Int8{
+				Int64: int64(limits.Daily),
+				Valid: true,
+			},
+		})
+
+		if err != nil {
+			return err
+		}
+
 		return err
 	})
 

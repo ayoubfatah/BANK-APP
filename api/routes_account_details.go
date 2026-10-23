@@ -2,7 +2,7 @@ package api
 
 import "github.com/gin-gonic/gin"
 
-func (server *Server) registerPublicAccountDetailsRoutes(router gin.IRoutes) {
+func (server *Server) registerAuthenticatedAccountDetailsRoutes(router gin.IRoutes) {
 	router.GET("/accounts/:id/details", server.GetAccountDetails)
 }
 

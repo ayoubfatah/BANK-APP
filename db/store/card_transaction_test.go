@@ -6,6 +6,7 @@ import (
 	"time"
 
 	db "github.com/bank-app/db/sqlc"
+
 	"github.com/bank-app/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,7 +19,7 @@ func createRandomCard(t *testing.T) db.Card {
 	user := createNewUser(t)
 
 	cardNumber := utils.RandomNumbers(14)
-	lastFour := cardNumber[len(cardNumber)-4:] // Extracts the actual last 4 digits
+	lastFour := cardNumber[len(cardNumber)-4:]
 
 	account, err := testStore.CreateAccount(
 		context.Background(),
@@ -31,11 +32,12 @@ func createRandomCard(t *testing.T) db.Card {
 	)
 	require.NoError(t, err)
 
-	card, err := testStore.CreateCard(
+	card, err := testStore.CreateCardTx(
 		context.Background(),
-		db.CreateCardParams{
+		CreateCardTxParams{
 			UserID:     user.ID,
 			AccountID:  account.ID,
+			Currency:   account.Currency,
 			LastFour:   lastFour,
 			CardNumber: cardNumber,
 			Cvv:        utils.RandomNumbers(3),
@@ -48,6 +50,7 @@ func createRandomCard(t *testing.T) db.Card {
 			},
 		},
 	)
+
 	require.NoError(t, err)
 
 	return card
