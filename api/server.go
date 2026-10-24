@@ -79,12 +79,7 @@ func (server *Server) setupRouter() {
 	server.router = router
 }
 
-func (server *Server) Start(address string) error {
-	server.httpServer = &http.Server{
-		Addr:              address,
-		Handler:           server.router,
-		ReadHeaderTimeout: 5 * time.Second,
-	}
+func (server *Server) Start() error {
 	return server.httpServer.ListenAndServe()
 }
 
