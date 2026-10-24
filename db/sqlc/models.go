@@ -106,9 +106,13 @@ type Card struct {
 	// active, frozen, cancelled, expired
 	Status          string             `json:"status"`
 	CancelledReason pgtype.Text        `json:"cancelled_reason"`
+	CancelledAt     pgtype.Timestamptz `json:"cancelled_at"`
+	BlockedAt       pgtype.Timestamptz `json:"blocked_at"`
+	BlockedReason   pgtype.Text        `json:"blocked_reason"`
 	ExpiryDate      pgtype.Date        `json:"expiry_date"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	ReplacedCardID  pgtype.Int8        `json:"replaced_card_id"`
 }
 
 type CardSpendingLimit struct {

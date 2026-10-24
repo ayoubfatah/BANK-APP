@@ -32,7 +32,7 @@ func createRandomCard(t *testing.T) db.Card {
 	)
 	require.NoError(t, err)
 
-	card, err := testStore.CreateCardTx(
+	card, _, err := testStore.CreateCardTx(
 		context.Background(),
 		CreateCardTxParams{
 			UserID:     user.ID,
@@ -54,6 +54,83 @@ func createRandomCard(t *testing.T) db.Card {
 	require.NoError(t, err)
 
 	return card
+}
+
+func TestReplaceCardTx(t *testing.T) {
+	store := NewStore(testStore.db)
+
+	oldCard := createRandomCard(t)
+
+	account, err := store.GetAccount(
+		context.Background(),
+		oldCard.AccountID,
+	)
+	require.NoError(t, err)
+
+	newCardNumber := utils.RandomNumbers(14)
+
+	newCardParams := db.CreateCardParams{
+		UserID:     oldCard.UserID,
+		AccountID:  oldCard.AccountID,
+		CardNumber: newCardNumber,
+		LastFour:   newCardNumber[len(newCardNumber)-4:],
+		Cvv:        utils.RandomNumbers(3),
+		Brand:      oldCard.Brand,
+		CardType:   oldCard.CardType,
+		Status:     "active",
+		ExpiryDate: pgtype.Date{
+			Time:  time.Now().AddDate(5, 0, 0),
+			Valid: true,
+		},
+	}
+
+	result, err := store.ReplaceCardTx(
+		context.Background(),
+		ReplaceCardTxArgs{
+			OldCardID: oldCard.ID,
+			UserID:    oldCard.UserID,
+			Reason:    "damaged",
+			Currency:  account.Currency,
+			NewCard:   newCardParams,
+		},
+	)
+
+	require.NoError(t, err)
+
+	require.Equal(t, oldCard.ID, result.OldCard.ID)
+	require.Equal(t, "cancelled", result.OldCard.Status)
+
+	require.NotZero(t, result.NewCard.ID)
+	require.NotEqual(t, oldCard.ID, result.NewCard.ID)
+	require.Equal(t, oldCard.UserID, result.NewCard.UserID)
+	require.Equal(t, oldCard.AccountID, result.NewCard.AccountID)
+	require.Equal(t, "active", result.NewCard.Status)
+	require.Equal(t, newCardParams.CardNumber, result.NewCard.CardNumber)
+	require.Equal(t, newCardParams.LastFour, result.NewCard.LastFour)
+
+	require.True(t, result.NewCard.ReplacedCardID.Valid)
+	require.Equal(
+		t,
+		oldCard.ID,
+		result.NewCard.ReplacedCardID.Int64,
+	)
+
+	require.Equal(t, result.NewCard.ID, result.Limits.CardID)
+	require.True(t, result.Limits.DailyLimit.Valid)
+	require.True(t, result.Limits.MonthlyLimit.Valid)
+	require.Positive(t, result.Limits.DailyLimit.Int64)
+	require.Positive(t, result.Limits.MonthlyLimit.Int64)
+
+	updatedOldCard, err := store.GetCard(context.Background(), oldCard.ID)
+	require.NoError(t, err)
+	require.Equal(t, "cancelled", updatedOldCard.Status)
+
+	// Verify the new card exists in the database.
+	updatedNewCard, err := store.GetCard(context.Background(), result.NewCard.ID)
+	require.NoError(t, err)
+	require.Equal(t, "active", updatedNewCard.Status)
+	require.True(t, updatedNewCard.ReplacedCardID.Valid)
+	require.Equal(t, oldCard.ID, updatedNewCard.ReplacedCardID.Int64)
 }
 
 func createCardTransaction(t *testing.T) db.CardTransaction {

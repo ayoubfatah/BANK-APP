@@ -79,7 +79,7 @@ func (server *Server) createCard(ctx *gin.Context) {
 		return
 	}
 
-	card, err := server.store.CreateCardTx(ctx, store.CreateCardTxParams{
+	card, _, err := server.store.CreateCardTx(ctx, store.CreateCardTxParams{
 		UserID:     account.UserID,
 		AccountID:  account.ID,
 		Currency:   account.Currency,
@@ -319,4 +319,206 @@ func (server *Server) changeSpendLimit(ctx *gin.Context) {
 		DailyLimit:   limits.DailyLimit.Int64,
 		MonthlyLimit: limits.MonthlyLimit.Int64,
 	})
+}
+
+// replace
+
+type ReplaceCardParam struct {
+	ID int64 `uri:"id" binding:"required,min=1"`
+}
+
+type replaceCardRequest struct {
+	Reason string `json:"reason" binding:"required,oneof=lost stolen damaged"`
+}
+
+// POST /cards/:id/replace
+func (server *Server) ReplaceCard(ctx *gin.Context) {
+	payload := getAuthPayload(ctx)
+
+	var param ReplaceCardParam
+	if err := ctx.ShouldBindUri(&param); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	var req replaceCardRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	oldCard, err := server.store.GetCardByIDAndUserID(
+		ctx,
+		db.GetCardByIDAndUserIDParams{
+			ID:     param.ID,
+			UserID: payload.UserID,
+		},
+	)
+	if err != nil {
+		handleDBError(ctx, err)
+		return
+	}
+
+	if oldCard.Status != "active" && oldCard.Status != "frozen" {
+		ctx.JSON(http.StatusConflict, gin.H{
+			"error": "card is " + oldCard.Status,
+		})
+		return
+	}
+
+	account, err := server.store.GetAccountByIDAndUserID(
+		ctx,
+		db.GetAccountByIDAndUserIDParams{
+			ID:     oldCard.AccountID,
+			UserID: payload.UserID,
+		},
+	)
+	if err != nil {
+		handleDBError(ctx, err)
+		return
+	}
+
+	if account.Status != "active" {
+		ctx.JSON(http.StatusConflict, gin.H{
+			"error": "account is " + account.Status,
+		})
+		return
+	}
+
+	cardNumber := utils.RandomNumbers(14)
+	lastFour := cardNumber[len(cardNumber)-4:]
+	randomCvv := utils.RandomNumbers(3)
+
+	newCard := db.CreateCardParams{
+		UserID:     oldCard.UserID,
+		AccountID:  oldCard.AccountID,
+		CardNumber: cardNumber,
+		LastFour:   lastFour,
+		Cvv:        randomCvv,
+		Brand:      oldCard.Brand,
+		CardType:   oldCard.CardType,
+		Status:     "active",
+		ExpiryDate: pgtype.Date{
+			Time:  time.Now().AddDate(5, 0, 0),
+			Valid: true,
+		},
+	}
+
+	result, err := server.store.ReplaceCardTx(ctx, store.ReplaceCardTxArgs{
+		OldCardID: param.ID,
+		UserID:    payload.UserID,
+		Reason:    req.Reason,
+		Currency:  account.Currency,
+		NewCard:   newCard,
+	})
+	if err != nil {
+		server.cardTransitionError(ctx, err, param.ID, payload.UserID)
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{
+		"old_card": newCardResponse(result.OldCard),
+		"new_card": newCardResponse(result.NewCard),
+	})
+}
+
+// ADMIN LIST CARDS
+
+type adminListCardsRequest struct {
+	LastFour *string `form:"last_four"`
+	Brand    *string `form:"brand"`
+	Status   *string `form:"status" binding:"omitempty,oneof=active blocked frozen expired cancelled"`
+	CardType *string `form:"card_type" binding:"omitempty,oneof=virtual physical"`
+	UserID   *int64  `form:"user_id" binding:"omitempty,gt=0"`
+	PageID   int32   `form:"page_id,default=1" binding:"gte=1"`
+	PageSize int32   `form:"page_size,default=10" binding:"gte=1,lte=100"`
+}
+
+func (server *Server) AdminListCards(ctx *gin.Context) {
+	payload := getAuthPayload(ctx)
+	if payload.Role != "admin" {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("You are not allowed to perform this action")))
+		return
+	}
+	var req adminListCardsRequest
+
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	offset := (req.PageID - 1) * req.PageSize
+
+	var lastFour, brand, status, cardType pgtype.Text
+	var userID pgtype.Int8
+
+	if req.LastFour != nil {
+		lastFour = pgtype.Text{String: *req.LastFour, Valid: true}
+	}
+
+	if req.Brand != nil {
+		brand = pgtype.Text{String: *req.Brand, Valid: true}
+	}
+
+	if req.Status != nil {
+		status = pgtype.Text{String: *req.Status, Valid: true}
+	}
+
+	if req.CardType != nil {
+		cardType = pgtype.Text{String: *req.CardType, Valid: true}
+	}
+
+	if req.UserID != nil {
+		userID = pgtype.Int8{Int64: *req.UserID, Valid: true}
+	}
+
+	cards, err := server.store.AdminListCards(ctx, db.AdminListCardsParams{
+		LastFour: lastFour,
+		Brand:    brand,
+		Status:   status,
+		CardType: cardType,
+		UserID:   userID,
+		Offset:   offset,
+		PageSize: req.PageSize,
+	})
+	if err != nil {
+		handleDBError(ctx, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"data":      cards,
+		"page_id":   req.PageID,
+		"page_size": req.PageSize,
+	})
+
+}
+
+// admin get card
+
+type AdminGetCardParam struct {
+	ID int64 `uri:"id" json:"id" biding:"required,min=1"`
+}
+
+func (server *Server) AdminGetCard(ctx *gin.Context) {
+	payload := getAuthPayload(ctx)
+
+	if payload.Role != "admin" {
+		ctx.JSON(http.StatusUnauthorized, errorResponse(errors.New("You are not allowed to perform this action")))
+		return
+	}
+	var param AdminGetCardParam
+	if err := ctx.ShouldBindUri(&param); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+		return
+	}
+
+	// check if card belongs to the user
+	card, err := server.store.GetCard(ctx, param.ID)
+	if err != nil {
+		handleDBError(ctx, err)
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, newCardResponse(card))
 }

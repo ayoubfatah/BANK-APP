@@ -12,3 +12,12 @@ func (server *Server) registerAuthenticatedCardsRoute(router gin.IRouter) {
 	router.POST("/cards/:id/limits", server.changeSpendLimit)
 	router.POST("/cards/:id/replace", server.changeSpendLimit)
 }
+
+func (server *Server) registerAdminCardsRoute(router gin.IRouter) {
+	router.GET("/cards", server.AdminListCards)
+	router.GET("/cards/:id", server.getCard)
+	router.POST("/cards", server.createCard)
+	router.POST("/cards/:id/freeze", server.freezeCard)
+	router.POST("/cards/:id/unfreeze", server.UnfreezeCard)
+
+}

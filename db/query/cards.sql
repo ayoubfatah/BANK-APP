@@ -103,6 +103,69 @@ WHERE id = sqlc.arg('id')
   AND status IN ('active', 'frozen')
 RETURNING *;
 
+
+
+
+-- name: SetCardReplacedCardID :one
+UPDATE cards
+SET replaced_card_id = $2,
+    updated_at = now()
+WHERE id = $1
+RETURNING *; 
+
+
+
+
+-- name: AdminListCards :many
+SELECT *
+FROM cards
+WHERE
+    (sqlc.narg('last_four')::text IS NULL
+        OR last_four = sqlc.narg('last_four')::text)
+    AND (sqlc.narg('brand')::text IS NULL
+        OR brand = sqlc.narg('brand')::text)
+    AND (sqlc.narg('status')::text IS NULL
+        OR status = sqlc.narg('status')::text)
+    AND (sqlc.narg('card_type')::text IS NULL
+        OR card_type = sqlc.narg('card_type')::text)
+    AND (sqlc.narg('user_id')::bigint IS NULL
+        OR user_id = sqlc.narg('user_id')::bigint)
+ORDER BY id DESC
+LIMIT sqlc.arg('page_size')
+OFFSET sqlc.arg('offset');
+
+
+-- name: AdminGetCard :one
+SELECT *
+FROM cards
+WHERE id = $1;
+
+
+-- name: AdminGetCardForUpdate :one
+SELECT *
+FROM cards
+WHERE id = $1
+FOR UPDATE;
+
+
+-- name: AdminBlockCard :one
+UPDATE cards
+SET status = 'blocked'
+WHERE id = $1
+  AND status IN ('active', 'frozen')
+RETURNING *;
+
+
+-- name: AdminUnblockCard :one
+UPDATE cards
+SET status = 'active'
+WHERE id = $1
+  AND status = 'blocked'
+RETURNING *;
+
+
+
+
 -- name: AdminCancelCard :one
 UPDATE cards
 SET status = 'cancelled',

@@ -335,8 +335,16 @@ CREATE TABLE cards (
 
     cancelled_reason  varchar(20)
      CHECK (cancelled_reason IN ('lost', 'stolen', 'damaged', 'user_request', 'fraud')),
+    cancelled_at   timestamptz ,
+
+    blocked_at   timestamptz ,
+    blocked_reason  varchar(20)
+    CHECK (cancelled_reason IN ('lost', 'stolen', 'damaged', 'user_request', 'fraud')),
+
 
     expiry_date  date  NOT NULL,
+
+
 
     created_at   timestamptz NOT NULL DEFAULT now(),
     updated_at   timestamptz NOT NULL DEFAULT now(),

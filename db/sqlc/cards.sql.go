@@ -11,6 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const adminBlockCard = `-- name: AdminBlockCard :one
+UPDATE cards
+SET status = 'blocked'
+WHERE id = $1
+  AND status IN ('active', 'frozen')
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
+`
+
+func (q *Queries) AdminBlockCard(ctx context.Context, id int64) (Card, error) {
+	row := q.db.QueryRow(ctx, adminBlockCard, id)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.CardNumber,
+		&i.LastFour,
+		&i.Cvv,
+		&i.Brand,
+		&i.CardType,
+		&i.Status,
+		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
+		&i.ExpiryDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReplacedCardID,
+	)
+	return i, err
+}
+
 const adminCancelCard = `-- name: AdminCancelCard :one
 UPDATE cards
 SET status = 'cancelled',
@@ -19,7 +52,7 @@ SET status = 'cancelled',
     updated_at = now()
 WHERE id = $2
   AND status IN ('active', 'frozen', 'blocked')
-RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
 `
 
 type AdminCancelCardParams struct {
@@ -41,9 +74,184 @@ func (q *Queries) AdminCancelCard(ctx context.Context, arg AdminCancelCardParams
 		&i.CardType,
 		&i.Status,
 		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
 		&i.ExpiryDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReplacedCardID,
+	)
+	return i, err
+}
+
+const adminGetCard = `-- name: AdminGetCard :one
+SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
+FROM cards
+WHERE id = $1
+`
+
+func (q *Queries) AdminGetCard(ctx context.Context, id int64) (Card, error) {
+	row := q.db.QueryRow(ctx, adminGetCard, id)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.CardNumber,
+		&i.LastFour,
+		&i.Cvv,
+		&i.Brand,
+		&i.CardType,
+		&i.Status,
+		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
+		&i.ExpiryDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReplacedCardID,
+	)
+	return i, err
+}
+
+const adminGetCardForUpdate = `-- name: AdminGetCardForUpdate :one
+SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
+FROM cards
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) AdminGetCardForUpdate(ctx context.Context, id int64) (Card, error) {
+	row := q.db.QueryRow(ctx, adminGetCardForUpdate, id)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.CardNumber,
+		&i.LastFour,
+		&i.Cvv,
+		&i.Brand,
+		&i.CardType,
+		&i.Status,
+		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
+		&i.ExpiryDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReplacedCardID,
+	)
+	return i, err
+}
+
+const adminListCards = `-- name: AdminListCards :many
+SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
+FROM cards
+WHERE
+    ($1::text IS NULL
+        OR last_four = $1::text)
+    AND ($2::text IS NULL
+        OR brand = $2::text)
+    AND ($3::text IS NULL
+        OR status = $3::text)
+    AND ($4::text IS NULL
+        OR card_type = $4::text)
+    AND ($5::bigint IS NULL
+        OR user_id = $5::bigint)
+ORDER BY id DESC
+LIMIT $7
+OFFSET $6
+`
+
+type AdminListCardsParams struct {
+	LastFour pgtype.Text `json:"last_four"`
+	Brand    pgtype.Text `json:"brand"`
+	Status   pgtype.Text `json:"status"`
+	CardType pgtype.Text `json:"card_type"`
+	UserID   pgtype.Int8 `json:"user_id"`
+	Offset   int32       `json:"offset"`
+	PageSize int32       `json:"page_size"`
+}
+
+func (q *Queries) AdminListCards(ctx context.Context, arg AdminListCardsParams) ([]Card, error) {
+	rows, err := q.db.Query(ctx, adminListCards,
+		arg.LastFour,
+		arg.Brand,
+		arg.Status,
+		arg.CardType,
+		arg.UserID,
+		arg.Offset,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Card{}
+	for rows.Next() {
+		var i Card
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.AccountID,
+			&i.CardNumber,
+			&i.LastFour,
+			&i.Cvv,
+			&i.Brand,
+			&i.CardType,
+			&i.Status,
+			&i.CancelledReason,
+			&i.CancelledAt,
+			&i.BlockedAt,
+			&i.BlockedReason,
+			&i.ExpiryDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ReplacedCardID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const adminUnblockCard = `-- name: AdminUnblockCard :one
+UPDATE cards
+SET status = 'active'
+WHERE id = $1
+  AND status = 'blocked'
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
+`
+
+func (q *Queries) AdminUnblockCard(ctx context.Context, id int64) (Card, error) {
+	row := q.db.QueryRow(ctx, adminUnblockCard, id)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.CardNumber,
+		&i.LastFour,
+		&i.Cvv,
+		&i.Brand,
+		&i.CardType,
+		&i.Status,
+		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
+		&i.ExpiryDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReplacedCardID,
 	)
 	return i, err
 }
@@ -57,7 +265,7 @@ SET status = 'cancelled',
 WHERE id = $2
   AND user_id = $3
   AND status IN ('active', 'frozen')
-RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
 `
 
 type CancelCardParams struct {
@@ -80,9 +288,13 @@ func (q *Queries) CancelCard(ctx context.Context, arg CancelCardParams) (Card, e
 		&i.CardType,
 		&i.Status,
 		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
 		&i.ExpiryDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReplacedCardID,
 	)
 	return i, err
 }
@@ -123,7 +335,7 @@ INSERT INTO cards (
     $8,
     $9
 )
-RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
 `
 
 type CreateCardParams struct {
@@ -162,9 +374,13 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (Card, e
 		&i.CardType,
 		&i.Status,
 		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
 		&i.ExpiryDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReplacedCardID,
 	)
 	return i, err
 }
@@ -175,7 +391,7 @@ SET status = 'frozen'
 WHERE id = $1
   AND user_id = $2
   AND status = 'active'
-RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
 `
 
 type FreezeCardParams struct {
@@ -197,15 +413,19 @@ func (q *Queries) FreezeCard(ctx context.Context, arg FreezeCardParams) (Card, e
 		&i.CardType,
 		&i.Status,
 		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
 		&i.ExpiryDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReplacedCardID,
 	)
 	return i, err
 }
 
 const getCard = `-- name: GetCard :one
-SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
 FROM cards
 WHERE id = $1
 LIMIT 1
@@ -225,15 +445,19 @@ func (q *Queries) GetCard(ctx context.Context, id int64) (Card, error) {
 		&i.CardType,
 		&i.Status,
 		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
 		&i.ExpiryDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReplacedCardID,
 	)
 	return i, err
 }
 
 const getCardByIDAndUserID = `-- name: GetCardByIDAndUserID :one
-SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
 FROM cards
 WHERE id = $1
   AND user_id = $2
@@ -259,15 +483,19 @@ func (q *Queries) GetCardByIDAndUserID(ctx context.Context, arg GetCardByIDAndUs
 		&i.CardType,
 		&i.Status,
 		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
 		&i.ExpiryDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReplacedCardID,
 	)
 	return i, err
 }
 
 const listCardsByAccountID = `-- name: ListCardsByAccountID :many
-SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
 FROM cards
 WHERE account_id = $1
 ORDER BY created_at DESC
@@ -293,9 +521,13 @@ func (q *Queries) ListCardsByAccountID(ctx context.Context, accountID int64) ([]
 			&i.CardType,
 			&i.Status,
 			&i.CancelledReason,
+			&i.CancelledAt,
+			&i.BlockedAt,
+			&i.BlockedReason,
 			&i.ExpiryDate,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReplacedCardID,
 		); err != nil {
 			return nil, err
 		}
@@ -308,7 +540,7 @@ func (q *Queries) ListCardsByAccountID(ctx context.Context, accountID int64) ([]
 }
 
 const listCardsByUserID = `-- name: ListCardsByUserID :many
-SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+SELECT id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
 FROM cards
 WHERE user_id = $1
 ORDER BY created_at DESC
@@ -334,9 +566,13 @@ func (q *Queries) ListCardsByUserID(ctx context.Context, userID int64) ([]Card, 
 			&i.CardType,
 			&i.Status,
 			&i.CancelledReason,
+			&i.CancelledAt,
+			&i.BlockedAt,
+			&i.BlockedReason,
 			&i.ExpiryDate,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReplacedCardID,
 		); err != nil {
 			return nil, err
 		}
@@ -362,13 +598,51 @@ func (q *Queries) LockUserForCardCreation(ctx context.Context, id int64) (int64,
 	return id_2, err
 }
 
+const setCardReplacedCardID = `-- name: SetCardReplacedCardID :one
+UPDATE cards
+SET replaced_card_id = $2,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
+`
+
+type SetCardReplacedCardIDParams struct {
+	ID             int64       `json:"id"`
+	ReplacedCardID pgtype.Int8 `json:"replaced_card_id"`
+}
+
+func (q *Queries) SetCardReplacedCardID(ctx context.Context, arg SetCardReplacedCardIDParams) (Card, error) {
+	row := q.db.QueryRow(ctx, setCardReplacedCardID, arg.ID, arg.ReplacedCardID)
+	var i Card
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.CardNumber,
+		&i.LastFour,
+		&i.Cvv,
+		&i.Brand,
+		&i.CardType,
+		&i.Status,
+		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
+		&i.ExpiryDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReplacedCardID,
+	)
+	return i, err
+}
+
 const unFreezeCard = `-- name: UnFreezeCard :one
 UPDATE cards
 SET status = 'active'
 WHERE id = $1
   AND user_id = $2
   AND status = 'frozen'
-RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
 `
 
 type UnFreezeCardParams struct {
@@ -390,9 +664,13 @@ func (q *Queries) UnFreezeCard(ctx context.Context, arg UnFreezeCardParams) (Car
 		&i.CardType,
 		&i.Status,
 		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
 		&i.ExpiryDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReplacedCardID,
 	)
 	return i, err
 }
@@ -403,7 +681,7 @@ SET
     status = $1,
     updated_at = now()
 WHERE id = $2
-RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, expiry_date, created_at, updated_at
+RETURNING id, user_id, account_id, card_number, last_four, cvv, brand, card_type, status, cancelled_reason, cancelled_at, blocked_at, blocked_reason, expiry_date, created_at, updated_at, replaced_card_id
 `
 
 type UpdateCardStatusParams struct {
@@ -425,9 +703,13 @@ func (q *Queries) UpdateCardStatus(ctx context.Context, arg UpdateCardStatusPara
 		&i.CardType,
 		&i.Status,
 		&i.CancelledReason,
+		&i.CancelledAt,
+		&i.BlockedAt,
+		&i.BlockedReason,
 		&i.ExpiryDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReplacedCardID,
 	)
 	return i, err
 }
