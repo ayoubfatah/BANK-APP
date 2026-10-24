@@ -1,7 +1,10 @@
 package api
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/bank-app/db/store"
 	"github.com/bank-app/token"
@@ -14,6 +17,7 @@ type Server struct {
 	store      *store.Store
 	tokenMaker token.Maker
 	router     *gin.Engine
+	httpServer *http.Server
 }
 
 func NewServer(config utils.Config, store *store.Store) (*Server, error) {
@@ -29,6 +33,12 @@ func NewServer(config utils.Config, store *store.Store) (*Server, error) {
 	}
 
 	server.setupRouter()
+
+	server.httpServer = &http.Server{
+		Addr:              config.ServerAddress,
+		Handler:           server.router,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
 
 	return server, nil
 }
@@ -58,6 +68,7 @@ func (server *Server) setupRouter() {
 	admin.Use(authMiddleware(server.tokenMaker))
 	admin.Use(adminMiddleware())
 
+	server.registerAdminCardsRoute(admin)
 	server.registerAdminUserRoutes(admin)
 	server.registerAdminKYCRoutes(admin)
 	server.registerAdminCurrencyRoutes(admin)
@@ -69,5 +80,17 @@ func (server *Server) setupRouter() {
 }
 
 func (server *Server) Start(address string) error {
-	return server.router.Run(address)
+	server.httpServer = &http.Server{
+		Addr:              address,
+		Handler:           server.router,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	return server.httpServer.ListenAndServe()
+}
+
+func (server *Server) Shutdown(ctx context.Context) error {
+	if server.httpServer == nil {
+		return nil
+	}
+	return server.httpServer.Shutdown(ctx)
 }
