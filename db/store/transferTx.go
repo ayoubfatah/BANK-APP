@@ -39,7 +39,7 @@ type CreateTransferTransactionArgs struct {
 	IdempotencyKey pgtype.Text `json:"idempotency_key"`
 }
 
-func (store *Store) CreateTransferTransaction(ctx context.Context, args CreateTransferTransactionArgs) error {
+func (store *SQLStore) CreateTransferTransaction(ctx context.Context, args CreateTransferTransactionArgs) error {
 	// lets lock accounts first in a consistent order
 	err := store.execTx(ctx, func(q *db.Queries) error {
 

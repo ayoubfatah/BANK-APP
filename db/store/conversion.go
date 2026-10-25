@@ -33,7 +33,7 @@ type CreateConversionTransactionResult struct {
 	ToEntry    db.Entry
 }
 
-func (store *Store) CreateConversionTransaction(ctx context.Context, args CreateConversionTransactionArgs) (CreateConversionTransactionResult, error) {
+func (store *SQLStore) CreateConversionTransaction(ctx context.Context, args CreateConversionTransactionArgs) (CreateConversionTransactionResult, error) {
 	var result CreateConversionTransactionResult
 
 	err := store.execTx(ctx, func(q *db.Queries) error {

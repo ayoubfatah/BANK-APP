@@ -8,7 +8,7 @@ import (
 )
 
 func TestUnFreezeAccountTxByUser(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 	ctx := context.Background()
 
 	user := createNewUser(t)
@@ -44,7 +44,7 @@ func TestUnFreezeAccountTxByUser(t *testing.T) {
 }
 
 func TestUnFreezeAccountTxByDifferentUser(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 	ctx := context.Background()
 
 	owner := createNewUser(t)
@@ -81,7 +81,7 @@ func TestUnFreezeAccountTxByDifferentUser(t *testing.T) {
 }
 
 func TestUnFreezeAccountTxByAdminWhenAlreadyUnfrozen(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 	ctx := context.Background()
 
 	user := createNewUser(t)

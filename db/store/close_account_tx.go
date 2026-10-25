@@ -18,7 +18,7 @@ type CloseAccountTxParams struct {
 	UserAgent string
 }
 
-func (store *Store) CloseAccountTx(
+func (store *SQLStore) CloseAccountTx(
 	ctx context.Context,
 	args CloseAccountTxParams,
 ) (int64, error) {

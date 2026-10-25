@@ -18,7 +18,7 @@ type FreezeAccountTxParams struct {
 	UserAgent string
 }
 
-func (store *Store) FreezeAccountTx(
+func (store *SQLStore) FreezeAccountTx(
 	ctx context.Context,
 	args FreezeAccountTxParams,
 ) (int64, error) {

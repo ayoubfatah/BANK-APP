@@ -17,7 +17,7 @@ type MarkInvoiceAsPaidTransactionParams struct {
 	Description   string `json:"description"`
 }
 
-func (store *Store) MarkInvoiceAsPaidTransaction(
+func (store *SQLStore) MarkInvoiceAsPaidTransaction(
 	ctx context.Context,
 	arg MarkInvoiceAsPaidTransactionParams,
 ) error {

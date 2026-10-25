@@ -14,13 +14,13 @@ import (
 
 type Server struct {
 	config     utils.Config
-	store      *store.Store
+	store      store.Store
 	tokenMaker token.Maker
 	router     *gin.Engine
 	httpServer *http.Server
 }
 
-func NewServer(config utils.Config, store *store.Store) (*Server, error) {
+func NewServer(config utils.Config, store store.Store) (*Server, error) {
 	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker: %w", err)

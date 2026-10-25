@@ -65,7 +65,7 @@ func run() error {
 
 	serverErr := make(chan error, 1)
 	go func() {
-		err := server.Start(config.ServerAddress)
+		err := server.Start()
 		if errors.Is(err, http.ErrServerClosed) {
 			err = nil
 		}

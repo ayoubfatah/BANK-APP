@@ -11,7 +11,7 @@ type CreateBusinessTxResult struct {
 	BusinessMember db.BusinessMember
 }
 
-func (store *Store) CreateBusinessTx(
+func (store *SQLStore) CreateBusinessTx(
 	ctx context.Context,
 	args db.CreateBusinessParams,
 	role string,

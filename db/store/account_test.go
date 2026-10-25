@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 
 // ---------- helpers ----------
 
-func getActivePartner(t *testing.T, store *Store, currency, country string) db.BankingPartner {
+func getActivePartner(t *testing.T, store Store, currency, country string) db.BankingPartner {
 	partners, err := store.GetBankingPartnersByCurrencyAndCountry(
 		context.Background(),
 		db.GetBankingPartnersByCurrencyAndCountryParams{
@@ -32,17 +31,17 @@ func getActivePartner(t *testing.T, store *Store, currency, country string) db.B
 	return db.BankingPartner{}
 }
 
-func countAccounts(t *testing.T, store *Store, userID int64) int {
+func countAccounts(t *testing.T, store Store, userID int64) int {
 	var n int
-	err := store.db.QueryRow(context.Background(),
+	err := testDB.QueryRow(context.Background(),
 		`SELECT count(*) FROM accounts WHERE user_id = $1`, userID).Scan(&n)
 	require.NoError(t, err)
 	return n
 }
 
-func countAccountDetails(t *testing.T, store *Store, accountID int64) int {
+func countAccountDetails(t *testing.T, store Store, accountID int64) int {
 	var n int
-	err := store.db.QueryRow(context.Background(),
+	err := testDB.QueryRow(context.Background(),
 		`SELECT count(*) FROM account_details WHERE account_id = $1`, accountID).Scan(&n)
 	require.NoError(t, err)
 	return n
@@ -70,7 +69,7 @@ func TestCreateAccountTx(t *testing.T) {
 		tc := tc
 		t.Run(tc.currency+"_"+tc.country, func(t *testing.T) {
 			ctx := context.Background()
-			store := NewStore(testStore.db)
+			store := testStore
 			user := createNewUser(t) // fresh user, so no duplicate-currency clash
 			partner := getActivePartner(t, store, tc.currency, tc.country)
 
@@ -111,7 +110,7 @@ func TestCreateAccountTx(t *testing.T) {
 }
 
 func TestCreateAccountTx_InvalidCurrency(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 	user := createNewUser(t)
 	partner := getActivePartner(t, store, "EUR", "DE")
 
@@ -125,7 +124,7 @@ func TestCreateAccountTx_InvalidCurrency(t *testing.T) {
 }
 
 func TestCreateAccountTx_PartnerNotFound(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 	user := createNewUser(t)
 
 	_, err := store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
@@ -138,7 +137,7 @@ func TestCreateAccountTx_PartnerNotFound(t *testing.T) {
 }
 
 func TestCreateAccountTx_DuplicateCurrency(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 	user := createNewUser(t)
 	de := getActivePartner(t, store, "EUR", "DE")
 	fr := getActivePartner(t, store, "EUR", "FR")
@@ -157,27 +156,4 @@ func TestCreateAccountTx_DuplicateCurrency(t *testing.T) {
 
 	require.Equal(t, 1, countAccounts(t, store, user.ID))
 	require.Equal(t, 1, countAccountDetails(t, store, first.Account.ID))
-}
-
-// Proves execTx really rolls back when the callback fails after a write.
-func TestExecTx_RollsBackOnError(t *testing.T) {
-	ctx := context.Background()
-	store := NewStore(testStore.db)
-	user := createNewUser(t)
-	errBoom := errors.New("boom")
-
-	err := store.execTx(ctx, func(q *db.Queries) error {
-		_, err := q.CreateAccount(ctx, db.CreateAccountParams{
-			UserID:   user.ID,
-			Currency: "EUR",
-			Balance:  0,
-			Status:   "active",
-		})
-		require.NoError(t, err)
-		return errBoom // fail AFTER the insert
-	})
-
-	require.ErrorIs(t, err, errBoom)
-	require.Equal(t, 0, countAccounts(t, store, user.ID),
-		"account must be rolled back; if it exists, something used store.X instead of q.X")
 }

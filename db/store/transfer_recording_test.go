@@ -32,7 +32,7 @@ func TestRecording_CreateUsers(t *testing.T) {
 }
 
 func TestRecording_CreateAccounts(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 
 	ayoub, err := store.GetUserByEmail(
 		context.Background(),

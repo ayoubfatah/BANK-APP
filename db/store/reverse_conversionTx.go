@@ -16,7 +16,7 @@ type ReverseConversionTransactionArgs struct {
 	Reason       string `json:"reason"`
 }
 
-func (store *Store) ReverseConversionTransaction(ctx context.Context, args ReverseConversionTransactionArgs) (db.Conversion, error) {
+func (store *SQLStore) ReverseConversionTransaction(ctx context.Context, args ReverseConversionTransactionArgs) (db.Conversion, error) {
 	var reversed db.Conversion
 
 	err := store.execTx(ctx, func(q *db.Queries) error {

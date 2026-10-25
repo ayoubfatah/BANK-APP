@@ -27,7 +27,7 @@ func TestRecording_CreateUser(t *testing.T) {
 }
 
 func TestRecording_CreateAccountsConversion(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 
 	user, err := store.GetUserByEmail(
 		context.Background(),

@@ -72,7 +72,7 @@ func createRandomIncomingPayment(
 }
 
 func TestCreateIncomingPayment(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 
 	// Create a user
 	user := createNewUser(t)

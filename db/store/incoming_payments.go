@@ -31,7 +31,7 @@ type CompleteIncomingPaymentTxResult struct {
 	Account         db.Account
 }
 
-func (store *Store) CompleteIncomingPaymentTx(
+func (store *SQLStore) CompleteIncomingPaymentTx(
 	ctx context.Context,
 	args CompleteIncomingPaymentTxArgs,
 ) (CompleteIncomingPaymentTxResult, error) {

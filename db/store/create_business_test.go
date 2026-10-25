@@ -23,7 +23,7 @@ func createNewUser(t *testing.T) db.User {
 		PasswordHash: utils.RandomPasswordHash(),
 	}
 
-	user, err := testStore.Queries.CreateUser(context.Background(), arg)
+	user, err := testStore.CreateUser(context.Background(), arg)
 
 	require.NoError(t, err)
 	require.NotEmpty(t, user)
@@ -43,7 +43,7 @@ func createNewUser(t *testing.T) db.User {
 }
 
 func TestCreateBusinessTx(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 
 	user := createNewUser(t)
 

@@ -16,7 +16,7 @@ type UpdateAccountDetailByAccountIDTxParams struct {
 	BankName  pgtype.Text
 }
 
-func (store *Store) UpdateAccountDetailByAccountIDTx(
+func (store *SQLStore) UpdateAccountDetailByAccountIDTx(
 	ctx context.Context,
 	args UpdateAccountDetailByAccountIDTxParams,
 ) (db.AccountDetail, error) {

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createTestUser(t *testing.T, store *Store, firstName, lastName, email string) db.User {
+func createTestUser(t *testing.T, store Store, firstName, lastName, email string) db.User {
 	user, err := store.CreateUser(context.Background(), db.CreateUserParams{
 		FirstName:    firstName,
 		LastName:     lastName,
@@ -21,7 +21,7 @@ func createTestUser(t *testing.T, store *Store, firstName, lastName, email strin
 	return user
 }
 
-func createTestAccount(t *testing.T, store *Store, userID int64, currency string, balance int64) db.Account {
+func createTestAccount(t *testing.T, store Store, userID int64, currency string, balance int64) db.Account {
 	account, err := store.CreateAccount(context.Background(), db.CreateAccountParams{
 		UserID:   userID,
 		Currency: currency,

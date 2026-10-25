@@ -32,7 +32,7 @@ func requireAuditLog(
 		rawMetadata   []byte
 	)
 
-	err := testStore.db.QueryRow(ctx, `
+	err := testDB.QueryRow(ctx, `
 		SELECT entity_type, entity_id, ip_address, user_agent, metadata
 		FROM audit_logs
 		WHERE user_id = $1
@@ -68,7 +68,7 @@ func requireNoAuditLog(
 
 	var count int64
 
-	err := testStore.db.QueryRow(context.Background(), `
+	err := testDB.QueryRow(context.Background(), `
 		SELECT COUNT(*)
 		FROM audit_logs
 		WHERE user_id = $1
@@ -85,7 +85,7 @@ func CreateAdminUserTest(t *testing.T) db.User {
 
 	user := createNewUser(t)
 
-	_, err := testStore.db.Exec(
+	_, err := testDB.Exec(
 		context.Background(),
 		`UPDATE users SET role = 'admin' WHERE id = $1`,
 		user.ID,
@@ -146,11 +146,12 @@ func TestWriteAudit(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		store := NewStore(testStore.db)
+
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			err := writeAudit(ctx, store.Queries, tc.actor, tc.entry)
+			err := writeAudit(ctx, db.New(testDB), tc.actor, tc.entry)
+
 			require.NoError(t, err)
 
 			var (
@@ -162,7 +163,7 @@ func TestWriteAudit(t *testing.T) {
 				rawMeta    []byte
 			)
 
-			err = testStore.db.QueryRow(ctx, `
+			err = testDB.QueryRow(ctx, `
 				SELECT action, entity_type, entity_id, ip_address,
 				       user_agent, metadata
 				FROM audit_logs

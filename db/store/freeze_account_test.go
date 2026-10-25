@@ -8,7 +8,7 @@ import (
 )
 
 func TestFreezeAccountTxByUser(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 	ctx := context.Background()
 
 	user := createNewUser(t)
@@ -33,7 +33,7 @@ func TestFreezeAccountTxByUser(t *testing.T) {
 }
 
 func TestFreezeAccountTxByAdmin(t *testing.T) {
-	store := NewStore(testStore.db)
+	store := testStore
 
 	ctx := context.Background()
 

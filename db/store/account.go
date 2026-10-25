@@ -22,7 +22,7 @@ type CreateAccountTxResult struct {
 	BankPartner    db.BankingPartner
 }
 
-func (store *Store) CreateAccountTx(ctx context.Context, args CreateAccountTxArguments) (CreateAccountTxResult, error) {
+func (store *SQLStore) CreateAccountTx(ctx context.Context, args CreateAccountTxArguments) (CreateAccountTxResult, error) {
 
 	var result CreateAccountTxResult
 	err := store.execTx(ctx, func(q *db.Queries) error {
