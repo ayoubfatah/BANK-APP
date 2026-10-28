@@ -40,11 +40,16 @@ createmigration:
 	migrate create -ext sql -dir db/migration -seq $(name)
 
 
+
 clean:
 	docker stop postgres12 || true
 	docker rm postgres12 || true
 	docker volume rm bank-app-postgres-data || true
 f:
 	gofmt -w .
+
+mock: 
+	mockgen -package mockdb  -destination db/mock/store.go  github.com/bank-app/db/store Store 
+
 	
-.PHONY: postgres createdb dropdb migrationup migrationdown resetdb sqlc test testfresh test-nocache clean server  createmigration f
+.PHONY: postgres createdb dropdb migrationup migrationdown resetdb sqlc test testfresh test-nocache clean server  createmigration f mock
