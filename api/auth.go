@@ -2,7 +2,6 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"net/netip"
 	"time"
@@ -123,7 +122,6 @@ type logoutRequest struct {
 
 func (server *Server) logoutUser(ctx *gin.Context) {
 	payload := getAuthPayload(ctx)
-	fmt.Println("PAYLOAD---", payload)
 	var req logoutRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
