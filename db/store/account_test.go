@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	db "github.com/bank-app/db/sqlc"
 	"github.com/stretchr/testify/require"
@@ -66,12 +67,31 @@ func TestCreateAccountTx(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
+
 		t.Run(tc.currency+"_"+tc.country, func(t *testing.T) {
 			ctx := context.Background()
 			store := testStore
+
 			user := createNewUser(t) // fresh user, so no duplicate-currency clash
 			partner := getActivePartner(t, store, tc.currency, tc.country)
+			_, err := testDB.Exec(
+				context.Background(),
+				`INSERT INTO kyc_verifications (
+        user_id,
+        document_type,
+        document_number,
+        status,
+        rejection_reason,
+        verified_at
+    )
+    VALUES ($1, $2, $3, $4, $5, $6)`,
+				user.ID,
+				"passport",
+				"12123131",
+				"approved",
+				"",
+				time.Now().UTC(),
+			)
 
 			result, err := store.CreateAccountTx(ctx, CreateAccountTxArguments{
 				UserID:           user.ID,
@@ -114,7 +134,26 @@ func TestCreateAccountTx_InvalidCurrency(t *testing.T) {
 	user := createNewUser(t)
 	partner := getActivePartner(t, store, "EUR", "DE")
 
-	_, err := store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
+	_, err := testDB.Exec(
+		context.Background(),
+		`INSERT INTO kyc_verifications (
+        user_id,
+        document_type,
+        document_number,
+        status,
+        rejection_reason,
+        verified_at
+    )
+    VALUES ($1, $2, $3, $4, $5, $6)`,
+		user.ID,
+		"passport",
+		"12123131",
+		"approved",
+		"",
+		time.Now().UTC(),
+	)
+
+	_, err = store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
 		UserID:           user.ID,
 		CurrencyCode:     "ZZZ",
 		BankingPartnerID: partner.ID,
@@ -127,7 +166,25 @@ func TestCreateAccountTx_PartnerNotFound(t *testing.T) {
 	store := testStore
 	user := createNewUser(t)
 
-	_, err := store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
+	_, err := testDB.Exec(
+		context.Background(),
+		`INSERT INTO kyc_verifications (
+        user_id,
+        document_type,
+        document_number,
+        status,
+        rejection_reason,
+        verified_at
+    )
+    VALUES ($1, $2, $3, $4, $5, $6)`,
+		user.ID,
+		"passport",
+		"12123131",
+		"approved",
+		"",
+		time.Now().UTC(),
+	)
+	_, err = store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
 		UserID:           user.ID,
 		CurrencyCode:     "EUR",
 		BankingPartnerID: 999999999,
@@ -142,6 +199,24 @@ func TestCreateAccountTx_DuplicateCurrency(t *testing.T) {
 	de := getActivePartner(t, store, "EUR", "DE")
 	fr := getActivePartner(t, store, "EUR", "FR")
 
+	_, err := testDB.Exec(
+		context.Background(),
+		`INSERT INTO kyc_verifications (
+        user_id,
+        document_type,
+        document_number,
+        status,
+        rejection_reason,
+        verified_at
+    )
+    VALUES ($1, $2, $3, $4, $5, $6)`,
+		user.ID,
+		"passport",
+		"12123131",
+		"approved",
+		"",
+		time.Now().UTC(),
+	)
 	first, err := store.CreateAccountTx(context.Background(), CreateAccountTxArguments{
 		UserID: user.ID, CurrencyCode: "EUR", BankingPartnerID: de.ID,
 	})
