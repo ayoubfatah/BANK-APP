@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	db "github.com/bank-app/db/sqlc"
@@ -26,7 +27,17 @@ func (store *SQLStore) CreateAccountTx(ctx context.Context, args CreateAccountTx
 
 	var result CreateAccountTxResult
 	err := store.execTx(ctx, func(q *db.Queries) error {
+
 		var err error
+
+		kyc, err := q.GetLatestKYCByUser(ctx, args.UserID)
+
+		if err != nil {
+			return err
+		}
+		if kyc.Status != "approved" {
+			return errors.New("User need to be verified to be able to create an account")
+		}
 		currency, err := q.GetCurrency(ctx, args.CurrencyCode)
 
 		if err != nil {
