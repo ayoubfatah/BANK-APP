@@ -8,6 +8,6 @@ func (server *Server) registerAuthenticatedAccountDetailsRoutes(router gin.IRout
 
 func (server *Server) registerAdminAccountDetailsRoutes(admin gin.IRoutes) {
 	// POST /admin/accounts/:id/details
-	admin.PATCH("/admin/accounts/:id/details", server.UpdateAccountDetails)
+	admin.PATCH("/accounts/:id/details", server.UpdateAccountDetails)
 
 }

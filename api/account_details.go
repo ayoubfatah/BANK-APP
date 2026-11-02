@@ -28,6 +28,10 @@ func (server *Server) GetAccountDetails(ctx *gin.Context) {
 		ctx.JSON(http.StatusForbidden, errorResponse(errors.New("this account details doesn't belong to you ")))
 		return
 	}
+	if err != nil {
+		handleDBError(ctx, err)
+		return
+	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"data": account,
