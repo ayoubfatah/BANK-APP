@@ -250,6 +250,13 @@ func (server *Server) CloseAccount(ctx *gin.Context) {
 		return
 	}
 
+	if account.Balance != 0 {
+		ctx.JSON(http.StatusConflict, gin.H{
+			"error": "Account has a non-zero balance",
+		})
+		return
+	}
+
 	rowsAffected, err := server.store.CloseAccountTx(
 		ctx,
 		store.CloseAccountTxParams{
