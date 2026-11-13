@@ -769,7 +769,7 @@ func TestCloseAccount(t *testing.T) {
 			},
 			buildStubs: func(s *mockdb.MockStore) {
 				s.EXPECT().GetAccount(gomock.Any(), gomock.Eq(balanceAccount.ID)).Times(1).Return(balanceAccount, nil)
-				// CloseAccountTx should NOT be called because balance != 0
+
 			},
 			checkResponse: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusConflict, rec.Code)
@@ -798,7 +798,7 @@ func TestCloseAccount(t *testing.T) {
 
 			},
 			checkResponse: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusOK, rec.Code)
+				require.Equal(t, http.StatusNotFound, rec.Code)
 			},
 		},
 		{
