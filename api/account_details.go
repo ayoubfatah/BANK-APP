@@ -24,12 +24,13 @@ func (server *Server) GetAccountDetails(ctx *gin.Context) {
 	}
 
 	account, err := server.store.GetAccountDetailsWithUserID(ctx, param.ID)
-	if account.UserID != payload.UserID && payload.Role != "admin" {
-		ctx.JSON(http.StatusForbidden, errorResponse(errors.New("this account details doesn't belong to you ")))
-		return
-	}
 	if err != nil {
 		handleDBError(ctx, err)
+		return
+	}
+
+	if account.UserID != payload.UserID && payload.Role != "admin" {
+		ctx.JSON(http.StatusForbidden, errorResponse(errors.New("this account details doesn't belong to you ")))
 		return
 	}
 
